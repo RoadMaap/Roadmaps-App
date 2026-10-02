@@ -127,20 +127,35 @@ class AppUpdater:
                 'error': str(exc),
             }
 
+        release = payload.get('data')
+        if isinstance(release, dict):
+            payload = release
+
         latest_version = payload.get('version', current_version)
-        is_force_update = _as_bool(
+        min_supported_version = payload.get('min_supported_version', '') or ''
+        api_force_update = _as_bool(
             payload.get(
                 'is_force_update',
                 payload.get('force_update', payload.get('required', False)),
             )
         )
+        below_minimum_version = bool(min_supported_version) and (
+            _parse_version(current_version) < _parse_version(min_supported_version)
+        )
+        has_update = (
+            _is_newer_version(current_version, latest_version)
+            or api_force_update
+            or below_minimum_version
+        )
+        is_force_update = api_force_update or below_minimum_version
         download_url = payload.get('download_url', '') or ''
         if isinstance(download_url, str) and download_url.startswith('/'):
             download_url = f'https://roadmaps.ir{download_url}'
         return {
-            'has_update': _is_newer_version(current_version, latest_version),
+            'has_update': has_update,
             'current_version': current_version,
             'latest_version': latest_version,
+            'min_supported_version': min_supported_version,
             'is_force_update': is_force_update,
             'update_type': 'forced' if is_force_update else 'optional',
             'download_url': download_url,
