@@ -1,0 +1,23 @@
+{
+  "mt5_path": "",
+  "margin_enabled": false,
+  "margin_limit": 50.0,
+  "leverage": "",
+  "filling_mode": "FOK",
+  "risk_mode": "fixed_usd",
+  "risk_value": 100.0,
+  "be_enabled": false,
+  "be_trigger": 1.0,
+  "pc_enabled": false,
+  "pc_volume": 50.0,
+  "pc_trigger": 2.0,
+  "tl_enabled": false,
+  "tl_trigger": 10200.0,
+  "wu_enabled": true,
+  "wu_candles": 500,
+  "nf_enabled": false,
+  "nf_eur": true,
+  "nf_usd": true,
+  "nf_before": 30,
+  "nf_after": 30
+}

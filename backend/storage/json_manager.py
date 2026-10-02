@@ -2,6 +2,8 @@ import json
 import os
 import sys
 import copy
+from pathlib import Path
+from runtime_paths import copy_seed_if_missing, resource_path, writable_backend_dir
 
 # --- 1. SYSTEM PATH INJECTION ---
 # 🛠 FIX: این مسیردهی حتماً باید بالاترین قسمت باشد تا پایتون بقیه پوشه‌ها را بشناسد
@@ -35,7 +37,14 @@ DEFAULT_STRATEGY_CONFIG = {
 }
 
 # 🛠 پوشه ذخیره سازی جدید (تغییر یافته از Jsons به storage)
-STORAGE_DIR = os.path.join(BACKEND_DIR, "storage")
+if getattr(sys, 'frozen', False):
+    STORAGE_DIR = str(writable_backend_dir() / "storage")
+    BUNDLED_SETTINGS_FILE = resource_path('backend', 'build_assets', 'default_user_settings.json')
+    BUNDLED_STRATEGIES_FILE = resource_path('backend', 'build_assets', 'active_strategies.json')
+else:
+    STORAGE_DIR = os.path.join(BACKEND_DIR, "storage")
+    BUNDLED_SETTINGS_FILE = Path(STORAGE_DIR) / 'user_settings.json'
+    BUNDLED_STRATEGIES_FILE = Path(STORAGE_DIR) / 'active_strategies.json'
 SETTINGS_FILE = os.path.join(STORAGE_DIR, 'user_settings.json')
 STRATEGIES_FILE = os.path.join(STORAGE_DIR, 'active_strategies.json')
 
@@ -51,11 +60,17 @@ def _ensure_storage_files():
     if not os.path.exists(STORAGE_DIR):
         os.makedirs(STORAGE_DIR, exist_ok=True)
     if not os.path.exists(SETTINGS_FILE):
-        with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(GLOBAL_SETTINGS_DEFAULTS, f, indent=4)
+        if BUNDLED_SETTINGS_FILE.exists():
+            copy_seed_if_missing(BUNDLED_SETTINGS_FILE, SETTINGS_FILE)
+        else:
+            with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(GLOBAL_SETTINGS_DEFAULTS, f, indent=4)
     if not os.path.exists(STRATEGIES_FILE):
-        with open(STRATEGIES_FILE, 'w', encoding='utf-8') as f:
-            json.dump({}, f, indent=4)
+        if BUNDLED_STRATEGIES_FILE.exists():
+            copy_seed_if_missing(BUNDLED_STRATEGIES_FILE, STRATEGIES_FILE)
+        else:
+            with open(STRATEGIES_FILE, 'w', encoding='utf-8') as f:
+                json.dump({}, f, indent=4)
 
 def load_settings():
     if not os.path.exists(SETTINGS_FILE):

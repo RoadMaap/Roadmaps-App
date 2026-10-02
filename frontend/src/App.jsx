@@ -5,6 +5,14 @@ import Dashboard from './components/Dashboard';
 import UpdateProgressScreen from './components/UpdateProgressScreen';
 import { useLanguage } from './context/LanguageContext';
 
+function toStrictBoolean(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    return ['1', 'true', 'yes', 'y', 'on', 'required', 'forced'].includes(value.trim().toLowerCase());
+  }
+  return value === 1;
+}
+
 function MainApp() {
   const { t } = useLanguage();
   const [view, setView] = useState('login');
@@ -23,7 +31,18 @@ function MainApp() {
       if (activeDownloadRef.current) return;
       try {
         const result = await window.eel.check_for_app_update()();
-        setUpdateInfo(result?.has_update ? result : null);
+        const forceValue = result?.is_force_update ?? result?.force_update ?? result?.force ?? result?.required;
+        const normalizedResult = result
+          ? {
+              ...result,
+              has_update: toStrictBoolean(result.has_update),
+              is_force_update: toStrictBoolean(forceValue),
+            }
+          : null;
+        if (normalizedResult?.has_update && normalizedResult.is_force_update !== true) {
+          console.log('[Updater] Waiting for user confirmation');
+        }
+        setUpdateInfo(normalizedResult?.has_update ? normalizedResult : null);
       } catch (error) {
         console.error('Update check failed:', error);
       }
@@ -34,7 +53,7 @@ function MainApp() {
     return () => window.clearInterval(pollingId);
   }, []);
 
-  const handleUpdateInstall = async () => {
+  const handleUpdateInstall = async (startReason) => {
     if (!window.eel) return;
 
     if (activeDownloadRef.current) return;
@@ -43,6 +62,7 @@ function MainApp() {
     setDownloadProgress(0);
     setDownloadMessage('Downloading the latest version...');
     try {
+      console.log(`[Updater] Starting download: ${startReason}`);
       const result = await window.eel.download_and_install_update()();
       if (result && result.success) {
         setDownloadProgress(100);
@@ -66,17 +86,18 @@ function MainApp() {
     }
   };
 
-  const startOptionalUpdate = () => handleUpdateInstall();
+  const startOptionalUpdate = () => handleUpdateInstall('user clicked Update Now');
 
   useEffect(() => {
-    const version = updateInfo?.is_force_update ? updateInfo.latest_version : null;
+    // The string "false" is truthy in JavaScript, so forced installs require a normalized boolean.
+    const version = updateInfo?.is_force_update === true ? updateInfo.latest_version : null;
     if (!version || isDownloading || forcedUpdateStartedRef.current === version) return;
 
     forcedUpdateStartedRef.current = version;
-    handleUpdateInstall();
+    handleUpdateInstall('Auto-starting: force update');
   }, [updateInfo, isDownloading, handleUpdateInstall]);
 
-  if (updateInfo?.is_force_update === true || isDownloading) {
+  if (isDownloading) {
     return <UpdateProgressScreen progress={downloadProgress} message={downloadMessage} />;
   }
 

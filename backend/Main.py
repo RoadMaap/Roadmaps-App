@@ -3,6 +3,7 @@ import sys
 import threading
 import time
 import eel
+from runtime_paths import resource_path
 
 # ==============================================================================
 # 1. SYSTEM PATH INJECTION
@@ -69,7 +70,7 @@ def on_close(page, sockets):
 # ==============================================================================
 if __name__ == '__main__':
     # آدرس‌دهی پوشه بیلد شده‌ی ریکت (React)
-    FRONTEND_DIR = os.path.join(os.path.dirname(BACKEND_DIR), 'frontend', 'dist')
+    FRONTEND_DIR = str(resource_path('frontend', 'dist'))
     eel.init(FRONTEND_DIR) 
     
     load_saved_strategies_disk()

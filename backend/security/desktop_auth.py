@@ -4,12 +4,14 @@ import http.server
 import json
 import os
 import secrets
+import shutil
 import socketserver
+import subprocess
 import threading
+import tempfile
 import time
 import urllib.parse
 from pathlib import Path
-import webbrowser
 import requests
 from requests.exceptions import RequestException, JSONDecodeError
 
@@ -42,6 +44,75 @@ PKCE_TOKEN_URL = f"{BACKEND_BASE_URL}/api/v1/users/auth/pkce/token/"
 # Local loopback callback port for the desktop PKCE browser redirect flow.
 # Supports both project-specific and generic env variables for compatibility.
 LOCAL_AUTH_PORT = int(os.getenv("ROADMAPS_LOCAL_AUTH_PORT") or os.getenv("LOCAL_AUTH_PORT") or "8765")
+
+
+def _open_private_browser(login_url):
+    """Launch a browser with a fresh, isolated profile for this login attempt."""
+    candidates = [
+        (shutil.which('msedge'), ['--inprivate']),
+        (shutil.which('chrome'), ['--incognito']),
+        (shutil.which('firefox'), ['-private-window']),
+    ]
+
+    for program_files in (os.environ.get('PROGRAMFILES'), os.environ.get('PROGRAMFILES(X86)')):
+        if not program_files:
+            continue
+        candidates.extend([
+            (str(Path(program_files) / 'Microsoft/Edge/Application/msedge.exe'), ['--inprivate']),
+            (str(Path(program_files) / 'Google/Chrome/Application/chrome.exe'), ['--incognito']),
+            (str(Path(program_files) / 'Mozilla Firefox/firefox.exe'), ['-private-window']),
+        ])
+
+    local_app_data = os.environ.get('LOCALAPPDATA')
+    if local_app_data:
+        candidates.extend([
+            (str(Path(local_app_data) / 'Microsoft/Edge/Application/msedge.exe'), ['--inprivate']),
+            (str(Path(local_app_data) / 'Google/Chrome/Application/chrome.exe'), ['--incognito']),
+            (str(Path(local_app_data) / 'Mozilla Firefox/firefox.exe'), ['-private-window']),
+        ])
+
+    profile_dir = tempfile.TemporaryDirectory(prefix='roadmaps-auth-')
+    for executable, private_args in candidates:
+        if executable and Path(executable).is_file():
+            if private_args == ['--inprivate']:
+                profile_args = [f'--user-data-dir={profile_dir.name}', *private_args]
+            elif private_args == ['--incognito']:
+                profile_args = [f'--user-data-dir={profile_dir.name}', *private_args]
+            elif private_args == ['-private-window']:
+                profile_args = ['-profile', profile_dir.name, '-no-remote', *private_args]
+            try:
+                process = subprocess.Popen([executable, *profile_args, login_url], close_fds=True)
+                return process, profile_dir
+            except OSError:
+                profile_dir.cleanup()
+                raise
+
+    profile_dir.cleanup()
+    raise RuntimeError('No supported browser was found for private login. Install Edge, Chrome, or Firefox.')
+
+
+def _close_private_browser(process, profile_dir):
+    """Stop the isolated browser process and remove its one-time profile."""
+    try:
+        process.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        if os.name == 'nt':
+            subprocess.run(
+                ['taskkill', '/F', '/T', '/PID', str(process.pid)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+        else:
+            process.terminate()
+        try:
+            process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+    finally:
+        profile_dir.cleanup()
+
 
 class AuthHandler(http.server.SimpleHTTPRequestHandler):
     """Captures the loopback authorization code redirected from browser."""
@@ -175,10 +246,10 @@ class DesktopAuthClient:
             httpd.server_close()
             return False, "Failed to retrieve valid login URL or state from backend.", None
 
-        # 2. Open login page in default browser
+        # 2. Open login page in a private browser session to avoid reusing site cookies.
         try:
-            webbrowser.open(login_url)
-        except webbrowser.Error as exc:
+            browser_process, browser_profile = _open_private_browser(login_url)
+        except (OSError, RuntimeError) as exc:
             httpd.server_close()
             return False, f"Failed to launch browser: {exc}", None
 
@@ -193,6 +264,7 @@ class DesktopAuthClient:
             if time.time() - start_time > timeout_seconds:
                 httpd.shutdown()
                 httpd.server_close()
+                _close_private_browser(browser_process, browser_profile)
                 return False, "Login timed out. Please try again.", None
             time.sleep(0.5)
 
@@ -201,6 +273,7 @@ class DesktopAuthClient:
         
         httpd.shutdown()
         httpd.server_close()
+        _close_private_browser(browser_process, browser_profile)
 
         # 5. Security Check: Validate state parameter to prevent CSRF attacks
         if received_state != self.device_state:
@@ -216,11 +289,39 @@ class DesktopAuthClient:
             token_resp.raise_for_status()
             data = token_resp.json()
 
-            # Extract the exact 'tokens' object defined in backend contract
+            # The PKCE endpoint returns tokens only; fetch the authenticated profile separately.
             tokens = data.get('tokens')
             
             if not tokens or not tokens.get('access'):
                 return False, "Tokens missing in exchange payload.", None
+
+            user = data.get('user')
+            if not isinstance(user, dict):
+                user = tokens.get('user') if isinstance(tokens.get('user'), dict) else {}
+            if not user:
+                try:
+                    profile_response = self.session.get(
+                        f"{BACKEND_BASE_URL}/api/v1/users/me/",
+                        headers={'Authorization': f"Bearer {tokens['access']}"},
+                        timeout=self.timeout,
+                    )
+                    profile_response.raise_for_status()
+                    profile_payload = profile_response.json()
+                    if isinstance(profile_payload, dict):
+                        wrapped_data = profile_payload.get('data')
+                        if isinstance(wrapped_data, dict) and isinstance(wrapped_data.get('user'), dict):
+                            user = wrapped_data['user']
+                        elif isinstance(wrapped_data, dict):
+                            user = wrapped_data
+                        elif isinstance(profile_payload.get('user'), dict):
+                            user = profile_payload['user']
+                        else:
+                            user = profile_payload
+                except (RequestException, JSONDecodeError) as exc:
+                    print(f"⚠️ Could not retrieve authenticated user profile: {exc}")
+
+            if user:
+                tokens = {**tokens, 'user': user}
 
             return True, "Authentication successful.", tokens
 
