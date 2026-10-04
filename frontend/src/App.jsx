@@ -73,16 +73,18 @@ function MainApp() {
         return;
       }
 
+      const failureMessage = result?.message || t('update_install_failed');
       activeDownloadRef.current = false;
       setIsDownloading(false);
-      setDownloadMessage('update_install_failed');
-      alert(t('update_install_failed'));
+      setDownloadMessage(failureMessage);
+      alert(failureMessage);
     } catch (error) {
       console.error('Install update failed:', error);
       activeDownloadRef.current = false;
       setIsDownloading(false);
-      setDownloadMessage('update_install_failed');
-      alert(t('update_install_failed'));
+      const failureMessage = error instanceof Error ? error.message : t('update_install_failed');
+      setDownloadMessage(failureMessage);
+      alert(failureMessage);
     }
   };
 

@@ -1,5 +1,6 @@
 import os
 import sys
+import socket
 import threading
 import time
 import eel
@@ -25,6 +26,16 @@ from security.desktop_auth import start_web_auth_flow
 # 3. GRACEFUL SHUTDOWN HANDLER
 # ==============================================================================
 _shutdown_initiated = False
+
+
+def _available_local_port(preferred_port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+        try:
+            server_socket.bind(('127.0.0.1', preferred_port))
+            return preferred_port
+        except OSError:
+            server_socket.bind(('127.0.0.1', 0))
+            return server_socket.getsockname()[1]
 
 
 def on_close(page, sockets):
@@ -75,7 +86,7 @@ if __name__ == '__main__':
     
     load_saved_strategies_disk()
     
-    MY_PORT = 8989
+    MY_PORT = _available_local_port(8989)
     START_PAGE = 'index.html' 
     APP_URL = f'http://localhost:{MY_PORT}/{START_PAGE}'
     
@@ -113,6 +124,6 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"⚠️ Primary App Mode Failed: {e}. Attempting Fallback to default browser...")
         try:
-            eel.start(START_PAGE, mode='edge', size=(1200, 850), close_callback=on_close)
+            eel.start(START_PAGE, mode='edge', port=MY_PORT, size=(1200, 850), close_callback=on_close)
         except Exception as ex:
             print(f"❌ Fatal Error: Could not launch UI. {ex}")

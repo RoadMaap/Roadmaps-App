@@ -16,6 +16,7 @@ import requests
 from runtime_paths import resource_path, writable_app_data_dir
 
 APP_VERSION = "0.0.0"
+DEFAULT_DOWNLOAD_URL = "https://github.com/RoadMaap/Roadmaps-App-Updates/releases/latest/download/RoadmapsApp_Setup.exe"
 RELEASE_API_URL = os.environ.get(
     "ROADMAPS_APP_RELEASE_API_URL",
     "https://roadmaps.ir/api/v1/roadmapsapp/releases/latest/"
@@ -175,7 +176,7 @@ class AppUpdater:
             or below_minimum_version
         )
         is_force_update = api_force_update or below_minimum_version
-        download_url = payload.get('download_url', '') or ''
+        download_url = payload.get('download_url', '') or DEFAULT_DOWNLOAD_URL
         if isinstance(download_url, str) and download_url.startswith('/'):
             download_url = f'https://roadmaps.ir{download_url}'
         return {
@@ -187,7 +188,7 @@ class AppUpdater:
             'update_type': 'forced' if is_force_update else 'optional',
             'download_url': download_url,
             'changelog': payload.get('changelog', ''),
-            'sha256': payload.get('file_hash', ''),
+            'sha256': payload.get('file_hash') or payload.get('sha256', ''),
             'error': None,
         }
 
@@ -204,6 +205,15 @@ class AppUpdater:
 
         request = urllib.request.Request(url, headers={'User-Agent': 'RoadMaps-App-Updater/1.0'})
         with urllib.request.urlopen(request, timeout=180) as response, open(out_path, 'wb') as handle:
+            final_url = urlsplit(response.geturl())
+            final_is_loopback_http = (
+                final_url.scheme == 'http'
+                and final_url.hostname in {'localhost', '127.0.0.1', '::1'}
+                and not getattr(sys, 'frozen', False)
+            )
+            if final_url.scheme != 'https' and not final_is_loopback_http:
+                raise ValueError('Release download redirects must use HTTPS.')
+
             content_length = response.headers.get('Content-Length')
             total_bytes = int(content_length) if content_length else 0
             if total_bytes > 2 * 1024 * 1024 * 1024:
@@ -240,54 +250,48 @@ class AppUpdater:
         return digest.hexdigest()
 
     @staticmethod
-    def _apply_update_and_restart(new_exe_path, latest_version):
+    def _install_update_and_exit(setup_path, latest_version):
         if not getattr(sys, 'frozen', False):
-            raise RuntimeError('Executable replacement is only available in packaged builds.')
+            raise RuntimeError('Installer execution is only available in packaged builds.')
 
         version_value = str(latest_version).strip()
         if not re.fullmatch(r'v?\d+(?:\.\d+){0,3}', version_value, flags=re.IGNORECASE):
             raise ValueError('Release version contains unsupported characters.')
 
-        current_exe = Path(sys.executable).resolve()
-        staged_exe = Path(new_exe_path).resolve()
-        if not staged_exe.is_file():
-            raise FileNotFoundError(f'Staged update executable not found: {staged_exe}')
+        staged_setup = Path(setup_path).resolve()
+        if not staged_setup.is_file():
+            raise FileNotFoundError(f'Staged update installer not found: {staged_setup}')
 
-        UPDATES_DIR.mkdir(parents=True, exist_ok=True)
-        bat_path = UPDATES_DIR / f'apply_update_{os.getpid()}.bat'
-        backup_exe = UPDATES_DIR / f'RoadmapsApp-previous-{os.getpid()}.exe'
+        try:
+            import core.engine_controller as engine_controller
+        except Exception as exc:
+            raise RuntimeError(f'Could not load the trading engine for shutdown: {exc}') from exc
 
-        def quote_batch_path(path):
-            return str(path).replace('%', '%%')
+        engine_controller.stop_robot()
+        trade_thread = getattr(engine_controller, 'trade_thread', None)
+        if trade_thread is not None and trade_thread.is_alive():
+            trade_thread.join(timeout=10.0)
+            if trade_thread.is_alive():
+                raise RuntimeError('Trading engine did not stop within 10 seconds; update was not started.')
 
-        current_exe_arg = quote_batch_path(current_exe)
-        staged_exe_arg = quote_batch_path(staged_exe)
-        backup_exe_arg = quote_batch_path(backup_exe)
-        version_file_arg = quote_batch_path(CURRENT_VERSION_FILE)
-        batch_content = f"""@echo off
-    taskkill /F /IM "Roadmaps App.exe" /T > NUL 2>&1
-    timeout /t 5 /nobreak > NUL
-    chcp 65001 > NUL
-copy /y "{current_exe_arg}" "{backup_exe_arg}" > NUL 2>&1
-del /f /q "{current_exe_arg}"
-move /y "{staged_exe_arg}" "{current_exe_arg}" > NUL
-if errorlevel 1 goto restore_old
->"{version_file_arg}" echo {version_value}
-start "" "{current_exe_arg}"
-del /f /q "{backup_exe_arg}" > NUL 2>&1
-goto cleanup
-:restore_old
-if exist "{backup_exe_arg}" copy /y "{backup_exe_arg}" "{current_exe_arg}" > NUL
-if exist "{current_exe_arg}" start "" "{current_exe_arg}"
-:cleanup
-del "%~f0"
-"""
-        bat_path.write_text(batch_content, encoding='utf-8-sig')
+        try:
+            import MetaTrader5 as mt5
+            mt5.shutdown()
+        except Exception:
+            pass
 
-        creation_flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        creation_flags = (
+            getattr(subprocess, 'DETACHED_PROCESS', 0)
+            | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)
+        )
         subprocess.Popen(
-            [os.environ.get('COMSPEC', 'cmd.exe'), '/d', '/c', str(bat_path)],
-            cwd=str(UPDATES_DIR),
+            [
+                str(staged_setup),
+                '/VERYSILENT',
+                '/SUPPRESSMSGBOXES',
+                '/FORCECLOSEAPPLICATIONS',
+            ],
+            cwd=str(staged_setup.parent),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -295,7 +299,6 @@ del "%~f0"
             creationflags=creation_flags,
         )
 
-        # The exposed Eel function runs on a worker thread, so terminate the process.
         os._exit(0)
 
     @staticmethod
@@ -363,23 +366,23 @@ del "%~f0"
                     'actual_sha256': actual_hash,
                 }
 
-            target_version_path = UPDATES_DIR / f'RoadmapsApp-{latest_version}.exe'
-            if target_version_path.exists():
-                target_version_path.unlink()
-            shutil.move(temp_path, target_version_path)
+            target_setup_path = UPDATES_DIR / f'RoadmapsApp_Setup-{latest_version}.exe'
+            if target_setup_path.exists():
+                target_setup_path.unlink()
+            shutil.move(temp_path, target_setup_path)
 
             if not getattr(sys, 'frozen', False):
                 return {
                     'success': True,
-                    'message': 'Update downloaded and verified; executable replacement requires a packaged build.',
+                    'message': 'Update installer downloaded and verified; installer execution requires a packaged build.',
                     'has_update': True,
                     'is_force_update': status.get('is_force_update', False),
                     'update_type': status.get('update_type', 'optional'),
                     'version': latest_version,
-                    'install_path': str(target_version_path),
+                    'install_path': str(target_setup_path),
                 }
 
-            AppUpdater._apply_update_and_restart(str(target_version_path), latest_version)
+            AppUpdater._install_update_and_exit(str(target_setup_path), latest_version)
 
             return {
                 'success': True,
@@ -388,7 +391,7 @@ del "%~f0"
                 'is_force_update': status.get('is_force_update', False),
                 'update_type': status.get('update_type', 'optional'),
                 'version': latest_version,
-                'install_path': str(target_version_path),
+                'install_path': str(target_setup_path),
             }
             
         except Exception as exc:
