@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { LanguageProvider } from './context/LanguageContext';
-import Login from './components/Login';
+import Login from './auth/Login';
 import Dashboard from './components/Dashboard';
 import UpdateProgressScreen from './components/UpdateProgressScreen';
 import { useLanguage } from './context/LanguageContext';
