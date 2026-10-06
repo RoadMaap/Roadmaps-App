@@ -58,7 +58,10 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
         markerAnimationRef.current = null;
 
         const sourceButton = event.currentTarget;
-        const sourceMarker = sourceButton.querySelector('[data-sidebar-hover-marker]');
+        const nav = sourceButton.closest('nav');
+        const sourceMarker = isCollapsed
+            ? nav?.querySelector('button[aria-current="page"] [data-sidebar-active-marker]')
+            : sourceButton.querySelector('[data-sidebar-hover-marker]');
         const sourceRect = sourceMarker?.getBoundingClientRect();
 
         onTabChange(item.id);
@@ -66,7 +69,6 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
         if (!sourceRect || activeTab === item.id) return;
 
         requestAnimationFrame(() => {
-            const nav = sourceButton.closest('nav');
             const targetButton = nav?.querySelector('button[aria-current="page"]');
             const targetMarker = targetButton?.querySelector('[data-sidebar-active-marker]');
             if (!targetButton || !targetMarker) return;
@@ -206,8 +208,7 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
                                             aria-hidden="true"
                                             data-sidebar-active-marker
                                             style={{
-                                                left: isCollapsed ? (isRtl ? 'auto' : '18px') : isRtl ? '8px' : 'calc(100% - 16px)',
-                                                right: isCollapsed && isRtl ? '18px' : 'auto',
+                                                left: isCollapsed ? (isRtl ? '16px' : '18px') : isRtl ? '8px' : 'calc(100% - 16px)',
                                                 top: isCollapsed ? 'calc(50% + 14px)' : 'calc(50% - 4px)',
                                             }}
                                             className="pointer-events-none absolute h-2 w-2 rounded-full bg-[#F28C45] transition-[top,left] duration-300 ease-in-out"
