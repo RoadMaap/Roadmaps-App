@@ -119,7 +119,7 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
             dir={isRtl ? 'rtl' : 'ltr'}
         >
             <div className="flex min-h-0 flex-1 flex-col p-4">
-                <div dir={isRtl ? 'rtl' : 'ltr'} className="flex flex-col items-start px-0 pb-2 pt-2">
+                <div dir={isRtl ? 'rtl' : 'ltr'} className="flex flex-col items-start px-0 pb-2 pt-0">
                     <div className="ms-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-lg">
                         <img src="/logo.png" alt="RoadMaps Logo" className="-translate-y-0.5 h-full w-full object-cover" />
                     </div>
@@ -155,7 +155,7 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
                             {t('menu') || (isRtl ? 'منو' : 'Menu')}
                         </p>
                     </div>
-                    <div aria-hidden="true" className="mb-2 h-4" />
+                    <div aria-hidden="true" className="mb-2 h-3" />
                     <div className="space-y-1">
                         {navigationItems.map((item) => {
                             const isActive = activeTab === item.id;

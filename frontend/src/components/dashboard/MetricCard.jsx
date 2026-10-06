@@ -24,7 +24,7 @@ const MetricCard = ({ title, value, subValue, trend = 'neutral', icon, children 
                     </span>
                 )}
             </div>
-            <p className={`mt-5 font-mono text-2xl font-bold tabular-nums ${theme.value}`}>{value}</p>
+            <p className={`mt-5 text-2xl font-bold tabular-nums ${theme.value}`}>{value}</p>
             <div className="mt-auto border-t border-[#2F2E35] pt-3">{children}</div>
         </section>
     );

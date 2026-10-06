@@ -4,7 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 const DashboardHeader = ({ activeTab, userName, strategyCount, hasUpdate, onShowUpdate, onToggleLanguage }) => {
     const { t, lang } = useLanguage();
     const title = activeTab === 'dashboard'
-        ? userName || t('RoadMaps App')
+        ? userName || 'Trading App'
         : activeTab === 'education'
             ? t('ai_builder_title')
             : activeTab === 'analyze'
@@ -19,7 +19,7 @@ const DashboardHeader = ({ activeTab, userName, strategyCount, hasUpdate, onShow
                 : t('strategy_config_subtitle');
 
     return (
-        <header className="sticky top-0 z-20 flex min-h-[76px] shrink-0 items-center justify-between gap-4 border-b border-[#2F2E35] bg-[#141318]/95 px-4 backdrop-blur-sm sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-20 flex min-h-[76px] shrink-0 items-center justify-between gap-4 bg-[#141318]/95 px-4 backdrop-blur-sm sm:px-6 lg:px-8">
             <div className="min-w-0">
                 <h1 className="truncate text-lg font-bold leading-tight text-[#FCFCFD] sm:text-xl">{title}</h1>
                 <p className="mt-1 truncate text-xs font-medium text-[#7A797E]">{subtitle}</p>
