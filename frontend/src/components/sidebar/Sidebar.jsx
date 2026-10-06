@@ -1,27 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
+import chart2Linear from '@iconify-icons/solar/chart-2-linear';
+import magicStick3Linear from '@iconify-icons/solar/magic-stick-3-linear';
+import settingsLinear from '@iconify-icons/solar/settings-linear';
+import widget5Linear from '@iconify-icons/solar/widget-5-linear';
+import solarInfo from '@iconify-json/solar/info.json';
 import { useLanguage } from '../../context/LanguageContext';
-import { callOptionalEel } from '../../services/eelApi';
 
 const Sidebar = ({ status, activeTab, onTabChange }) => {
     const { t, lang } = useLanguage();
-    const [appVersion, setAppVersion] = useState('0.0.0');
     const markerAnimationRef = useRef(null);
+    const [isCollapsed, setIsCollapsed] = useState(false);
     const isRtl = lang === 'fa';
-
-    useEffect(() => {
-        let isMounted = true;
-
-        callOptionalEel('get_app_version').then((versionInfo) => {
-            const version = versionInfo?.version;
-            if (isMounted && typeof version === 'string' && version.trim()) {
-                setAppVersion(version.trim());
-            }
-        });
-
-        return () => {
-            isMounted = false;
-        };
-    }, []);
 
     const connectionState = status === 'Running'
         ? {
@@ -45,44 +34,22 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
         {
             id: 'dashboard',
             label: t('overview') || (isRtl ? 'نمای کلی' : 'Overview'),
-            icon: (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                    <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
-                    <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
-                    <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
-                    <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
-                </svg>
-            ),
+            icon: widget5Linear,
         },
         {
             id: 'strategies',
             label: t('strategy_manager') || (isRtl ? 'مدیریت استراتژی' : 'Strategy manager'),
-            icon: (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m19.4 15 .1.1a1.8 1.8 0 1 1-2.5 2.5l-.1-.1a1.8 1.8 0 0 0-3 .9v.2a1.8 1.8 0 1 1-3.6 0v-.2a1.8 1.8 0 0 0-3-.9l-.1.1a1.8 1.8 0 1 1-2.5-2.5l.1-.1a1.8 1.8 0 0 0-.9-3h-.2a1.8 1.8 0 1 1 0-3.6h.2a1.8 1.8 0 0 0 .9-3l-.1-.1a1.8 1.8 0 1 1 2.5-2.5l.1.1a1.8 1.8 0 0 0 3-.9v-.2a1.8 1.8 0 1 1 3.6 0v.2a1.8 1.8 0 0 0 3 .9l.1-.1a1.8 1.8 0 1 1 2.5 2.5l-.1.1a1.8 1.8 0 0 0 .9 3h.2a1.8 1.8 0 1 1 0 3.6h-.2a1.8 1.8 0 0 0-.9 3Z" />
-                </svg>
-            ),
+            icon: settingsLinear,
         },
         {
             id: 'education',
             label: t('education_tab') || (isRtl ? 'سازنده هوشمند' : 'AI Builder'),
-            icon: (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 3h6m-5 0v6.2L5.6 17a2.7 2.7 0 0 0 2.3 4h8.2a2.7 2.7 0 0 0 2.3-4L14 9.2V3" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 15h8" />
-                </svg>
-            ),
+            icon: magicStick3Linear,
         },
         {
             id: 'analyze',
             label: t('analyze_chart') || (isRtl ? 'تحلیل نمودار' : 'Chart analysis'),
-            icon: (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.8 12s3.2-6.5 9.2-6.5 9.2 6.5 9.2 6.5-3.2 6.5-9.2 6.5S2.8 12 2.8 12Z" />
-                    <circle cx="12" cy="12" r="2.7" />
-                </svg>
-            ),
+            icon: chart2Linear,
         },
     ];
 
@@ -144,40 +111,47 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
 
     return (
         <aside
-            className="relative z-30 flex h-full w-[260px] shrink-0 flex-col overflow-hidden border-e border-[#2F2E35] bg-[#141318] font-sans text-[#FCFCFD]"
+            className={`relative z-30 flex h-full shrink-0 flex-col overflow-hidden border-e border-[#2F2E35] bg-[#141318] font-sans text-[#FCFCFD] transition-[width] duration-300 ${isCollapsed ? 'w-[76px]' : 'w-[260px]'}`}
             dir={isRtl ? 'rtl' : 'ltr'}
         >
             <div className="flex min-h-0 flex-1 flex-col p-4">
-                <div className="flex items-center gap-3 border-b border-[#2F2E35] px-1 pb-4">
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-[#2F2E35] bg-[#1E1D22]">
-                        <img src="/logo.png" alt="RoadMaps Logo" className="h-full w-full object-cover" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <h1 className="truncate text-lg font-bold leading-tight text-[#FCFCFD]">
-                            Trading <span className="font-normal text-[#BDBABD]">App</span>
-                        </h1>
-                        <p className="mt-1 text-[10px] font-medium text-[#7A797E]">
-                            {isRtl ? 'نسخه' : 'VERSION'} v{appVersion}
-                        </p>
+                <div dir={isRtl ? 'rtl' : 'ltr'} className="flex flex-col items-start px-0 pb-2 pt-2">
+                    <div className="ms-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-lg">
+                        <img src="/logo.png" alt="RoadMaps Logo" className="-translate-y-0.5 h-full w-full object-cover" />
                     </div>
                 </div>
 
-                <section className="mt-5 rounded-lg border border-[#2F2E35] bg-[#1E1D22] px-3 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                        <p className="text-[10px] font-semibold uppercase text-[#7A797E]">
-                            {t('connection_status') || (isRtl ? 'وضعیت اتصال' : 'Connection status')}
+                <nav className="mt-3 flex-1" aria-label={isRtl ? 'منوی اصلی' : 'Main navigation'}>
+                    <div
+                        dir={isRtl ? 'rtl' : 'ltr'}
+                        className={`mb-2 flex h-8 items-center border-b border-[#2F2E35] ${isCollapsed ? 'justify-start' : 'justify-between'}`}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => setIsCollapsed((collapsed) => !collapsed)}
+                            aria-label={isCollapsed ? (isRtl ? 'باز کردن نوار کناری' : 'Expand sidebar') : (isRtl ? 'بستن نوار کناری' : 'Collapse sidebar')}
+                            aria-expanded={!isCollapsed}
+                            title={isCollapsed ? (isRtl ? 'باز کردن نوار کناری' : 'Expand sidebar') : (isRtl ? 'بستن نوار کناری' : 'Collapse sidebar')}
+                            className="ms-1.5 -translate-y-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#7A797E] transition-colors hover:text-[#F28C45] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#F28C45]"
+                        >
+                            <svg
+                                className={`h-4 w-4 transition-transform duration-300 ${isCollapsed ? (isRtl ? 'rotate-180' : '') : (isRtl ? '' : 'rotate-180')}`}
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                aria-hidden="true"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="m9 18 6-6-6-6" />
+                            </svg>
+                        </button>
+                        <p
+                            dir={isRtl ? 'rtl' : 'ltr'}
+                            className={`ms-2 text-[10px] font-semibold uppercase text-[#7A797E] transition-colors hover:text-[#F28C45] ${isCollapsed ? 'hidden' : ''}`}
+                        >
+                            {t('menu') || (isRtl ? 'منو' : 'Menu')}
                         </p>
-                        <span className={`h-2 w-2 rounded-full ${connectionState.indicator} ${status === 'Running' ? 'animate-pulse' : ''}`} />
                     </div>
-                    <p className={`mt-2 text-sm font-semibold ${connectionState.text}`}>
-                        {connectionState.label}
-                    </p>
-                </section>
-
-                <nav className="mt-7 flex-1" aria-label={isRtl ? 'منوی اصلی' : 'Main navigation'}>
-                    <p className="mb-2 px-3 text-[10px] font-semibold uppercase text-[#7A797E]">
-                        {t('menu') || (isRtl ? 'منو' : 'Menu')}
-                    </p>
+                    <div aria-hidden="true" className="mb-2 h-4" />
                     <div className="space-y-1">
                         {navigationItems.map((item) => {
                             const isActive = activeTab === item.id;
@@ -188,26 +162,28 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
                                     type="button"
                                     onClick={(event) => handleNavigationClick(event, item)}
                                     aria-current={isActive ? 'page' : undefined}
-                                    className={`group relative flex min-h-11 w-full items-center gap-3 rounded-lg border border-transparent px-3 text-start transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#F28C45] ${
+                                    title={isCollapsed ? item.label : undefined}
+                                    dir={isRtl ? 'rtl' : 'ltr'}
+                                    className={`group relative flex min-h-11 w-full items-center gap-3 rounded-lg border border-transparent px-1.5 text-start transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#F28C45] ${
                                         isActive
                                             ? 'text-[#FCFCFD]'
                                             : 'text-[#BDBABD] hover:text-[#FCFCFD]'
                                     }`}
                                 >
                                     <span className={`flex h-8 w-8 shrink-0 items-center justify-center ${isActive ? 'text-[#F28C45]' : 'text-[#7A797E] group-hover:text-[#F28C45]'}`}>
-                                        <span className={`h-[18px] w-[18px] [&>svg]:h-full [&>svg]:w-full [&>svg]:stroke-[1.6] ${item.id === 'strategies' ? 'translate-y-[1.5px]' : ''}`}>
-                                            {item.icon}
+                                        <span className="h-[18px] w-[18px]">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox={`${item.icon.left ?? 0} ${item.icon.top ?? 0} ${item.icon.width ?? solarInfo.height} ${item.icon.height ?? solarInfo.height}`}
+                                                className="h-full w-full"
+                                                aria-hidden="true"
+                                                focusable="false"
+                                                dangerouslySetInnerHTML={{ __html: item.icon.body }}
+                                            />
                                         </span>
                                     </span>
-                                    <span className="min-w-0 flex-1">
+                                    {!isCollapsed && <span className="min-w-0 flex-1">
                                         <span className="inline-flex max-w-full items-center gap-2 text-[13px] font-medium">
-                                            {isRtl && !isActive && (
-                                                <span
-                                                    aria-hidden="true"
-                                                    data-sidebar-hover-marker
-                                                    className="h-[2px] w-3 shrink-0 rounded-full bg-[#F28C45] transition-[clip-path] duration-[240ms] ease-in-out [clip-path:inset(0_0_0_100%)] group-hover:[clip-path:inset(0)] group-focus-visible:[clip-path:inset(0)]"
-                                                />
-                                            )}
                                             <span className="truncate">{item.label}</span>
                                             {!isRtl && !isActive && (
                                                 <span
@@ -216,17 +192,25 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
                                                     className="h-[2px] w-3 shrink-0 rounded-full bg-[#F28C45] transition-[clip-path] duration-[240ms] ease-in-out [clip-path:inset(0_100%_0_0)] group-hover:[clip-path:inset(0)] group-focus-visible:[clip-path:inset(0)]"
                                                 />
                                             )}
+                                            {isRtl && !isActive && (
+                                                <span
+                                                    aria-hidden="true"
+                                                    data-sidebar-hover-marker
+                                                    className="h-[2px] w-3 shrink-0 rounded-full bg-[#F28C45] transition-[clip-path] duration-[240ms] ease-in-out [clip-path:inset(0_0_0_100%)] group-hover:[clip-path:inset(0)] group-focus-visible:[clip-path:inset(0)]"
+                                                />
+                                            )}
                                         </span>
-                                    </span>
+                                    </span>}
                                     {isActive && (
                                         <span
                                             aria-hidden="true"
                                             data-sidebar-active-marker
                                             style={{
-                                                left: isRtl ? '8px' : 'calc(100% - 16px)',
-                                                top: 'calc(50% - 4px)',
+                                                left: isCollapsed ? (isRtl ? 'auto' : '18px') : isRtl ? '8px' : 'calc(100% - 16px)',
+                                                right: isCollapsed && isRtl ? '18px' : 'auto',
+                                                top: isCollapsed ? 'calc(50% + 14px)' : 'calc(50% - 4px)',
                                             }}
-                                            className="pointer-events-none absolute h-2 w-2 rounded-full bg-[#F28C45]"
+                                            className="pointer-events-none absolute h-2 w-2 rounded-full bg-[#F28C45] transition-[top,left] duration-300 ease-in-out"
                                         />
                                     )}
                                 </button>
@@ -236,18 +220,44 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
                 </nav>
 
                 <footer className="mt-5 border-t border-[#2F2E35] pt-3">
-                    <a
-                        href="https://roadmaps.ir"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex min-h-10 items-center justify-between rounded-lg px-3 text-xs font-medium text-[#7A797E] transition-colors hover:bg-[#1E1D22] hover:text-[#BDBABD]"
-                    >
-                        <span>Roadmaps.ir</span>
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" d="M14 4h6v6m0-6-9 9" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" />
-                        </svg>
-                    </a>
+                    <div className="space-y-1">
+                        <section
+                            aria-label={connectionState.label}
+                            title={isCollapsed ? `${t('connection_status') || (isRtl ? 'وضعیت اتصال' : 'Connection status')}: ${connectionState.label}` : undefined}
+                            dir={isRtl ? 'rtl' : 'ltr'}
+                            className="flex min-h-10 min-w-0 items-center rounded-lg hover:bg-[#1E1D22]"
+                        >
+                            <span className="flex h-10 w-11 shrink-0 items-center justify-center">
+                                <span className={`h-2 w-2 rounded-full ${connectionState.indicator} ${status === 'Running' ? 'animate-pulse' : ''}`} />
+                            </span>
+                            {!isCollapsed && (
+                                <div dir={isRtl ? 'rtl' : 'ltr'} className="ms-1.5 min-w-0">
+                                    <p className="truncate text-[9px] font-semibold uppercase text-[#7A797E]">
+                                        {t('connection_status') || (isRtl ? 'وضعیت اتصال' : 'Connection status')}
+                                    </p>
+                                    <p className={`truncate text-xs font-semibold ${connectionState.text}`}>
+                                        {connectionState.label}
+                                    </p>
+                                </div>
+                            )}
+                        </section>
+                        <a
+                            href="https://roadmaps.ir"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={isCollapsed ? 'Roadmaps.ir' : undefined}
+                            dir={isRtl ? 'rtl' : 'ltr'}
+                            className="flex min-h-10 min-w-0 items-center rounded-lg text-[11px] font-medium text-[#7A797E] transition-colors hover:bg-[#1E1D22] hover:text-[#BDBABD]"
+                        >
+                            <span className="flex h-10 w-11 shrink-0 items-center justify-center">
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" d="M14 4h6v6m0-6-9 9" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" />
+                                </svg>
+                            </span>
+                            {!isCollapsed && <span dir={isRtl ? 'rtl' : 'ltr'} className="ms-1.5 truncate">Roadmaps.ir</span>}
+                        </a>
+                    </div>
                 </footer>
             </div>
         </aside>
