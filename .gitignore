@@ -43,3 +43,5 @@ Data & Config Files (JSON)
 !frontend/tsconfig.json
 !frontend/jsconfig.json
 !frontend/.eslintrc.json
+build/
+
