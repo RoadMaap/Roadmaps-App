@@ -86,13 +86,13 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
             <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-emerald-500/10 via-emerald-500/5 to-transparent pointer-events-none blur-3xl"></div>
             <div className="absolute bottom-0 right-0 w-64 h-64 bg-gradient-to-t from-indigo-500/5 to-transparent pointer-events-none blur-3xl"></div>
 
-            <div className="p-8 relative z-10 flex flex-col h-full overflow-y-auto custom-scrollbar">
+            <div className="p-4 relative z-10 flex flex-col h-full overflow-hidden">
                 
                 {/* Branding & Logo Section */}
-                <div className="flex items-center gap-4 mb-10 group cursor-pointer transition-transform duration-300 hover:scale-[1.02]">
+                <div className="flex items-center gap-4 mb-4 group cursor-pointer transition-transform duration-300 hover:scale-[1.02]">
                     <div className="group relative w-12 h-12 overflow-hidden rounded-2xl flex items-center justify-center shadow-[0_8px_16px_rgba(16,185,129,0.2)] transition-all duration-500 group-hover:shadow-[0_8px_24px_rgba(16,185,129,0.4)] group-hover:rotate-3">
                         <div className="absolute inset-0 rounded-2xl border-2 border-white/10 transition-transform duration-500 group-hover:scale-105"></div>
-                        <img src="/logo.svg" alt="RoadMaps Logo" className="relative z-10 block h-full w-full object-cover" />
+                        <img src="/logo.png" alt="RoadMaps Logo" className="relative z-10 block h-full w-full object-cover" />
                         {status === "Running" && (
                             <span className={`absolute -top-1.5 ${isRtl ? '-left-1.5' : '-right-1.5'} w-3.5 h-3.5 bg-white rounded-full animate-ping opacity-80`}></span>
                         )}
@@ -113,12 +113,12 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
                 </div>
 
                 {/* Refined Connection Status Card */}
-                <div className="mb-10">
-                    <div className="text-xs text-zinc-500 font-bold uppercase tracking-widest mb-3 px-1 flex items-center gap-2">
+                <div className="mb-4">
+                    <div className="text-xs text-zinc-500 font-bold uppercase tracking-widest mb-2 px-1 flex items-center gap-2">
                         {t('connection_status') || 'Connection Status'}
                         <div className="h-px bg-zinc-800 flex-1"></div>
                     </div>
-                    <div className={`flex items-center justify-between px-5 py-4 rounded-2xl border backdrop-blur-md transition-all duration-500 ${statusConfig.wrapper}`}>
+                    <div className={`flex items-center justify-between px-4 py-3 rounded-2xl border backdrop-blur-md transition-all duration-500 ${statusConfig.wrapper}`}>
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-xl bg-black/20">
                                 {statusConfig.icon}
@@ -138,22 +138,22 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
 
                 {/* Primary Navigation Menu with increased spacing and rich hover states */}
                 <nav className="flex-1">
-                    <div className="text-xs text-zinc-600 font-bold uppercase tracking-widest mb-4 px-1">
+                    <div className="text-xs text-zinc-600 font-bold uppercase tracking-widest mb-2 px-1">
                         {t('menu') || 'Main Menu'}
                     </div>
                     {/* Increased vertical spacing between items using gap-4 */}
-                    <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-1">
                         
                         {/* 1. Dashboard Tab */}
                         <button 
                             onClick={() => onTabChange('dashboard')}
-                            className={`group relative w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 overflow-hidden ${
+                            className={`group relative w-full flex items-center gap-3 px-4 py-2 rounded-2xl transition-all duration-300 overflow-hidden ${
                                 activeTab === 'dashboard' 
                                     ? 'bg-gradient-to-r from-emerald-500/20 to-emerald-500/5 border border-emerald-500/30 text-emerald-400 shadow-[0_4px_20px_rgba(16,185,129,0.15)]' 
                                     : 'bg-transparent border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/40 hover:border-zinc-700/50'
                             }`}
                         >
-                            <div className={`p-2.5 rounded-xl transition-colors duration-300 ${activeTab === 'dashboard' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800/80 text-zinc-500 group-hover:bg-zinc-700/80 group-hover:text-zinc-200'}`}>
+                            <div className={`p-2 rounded-xl transition-colors duration-300 ${activeTab === 'dashboard' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800/80 text-zinc-500 group-hover:bg-zinc-700/80 group-hover:text-zinc-200'}`}>
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                                 </svg>
@@ -167,13 +167,13 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
                         {/* 2. Strategy Manager Tab */}
                         <button 
                             onClick={() => onTabChange('strategies')}
-                            className={`group relative w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 overflow-hidden ${
+                            className={`group relative w-full flex items-center gap-3 px-4 py-2 rounded-2xl transition-all duration-300 overflow-hidden ${
                                 activeTab === 'strategies' 
                                     ? 'bg-gradient-to-r from-zinc-800 to-zinc-800/50 border border-zinc-600 text-white shadow-[0_4px_20px_rgba(0,0,0,0.3)]' 
                                     : 'bg-transparent border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/40 hover:border-zinc-700/50'
                             }`}
                         >
-                            <div className={`p-2.5 rounded-xl transition-colors duration-300 ${activeTab === 'strategies' ? 'bg-zinc-700 text-white' : 'bg-zinc-800/80 text-zinc-500 group-hover:bg-zinc-700/80 group-hover:text-zinc-200'}`}>
+                            <div className={`p-2 rounded-xl transition-colors duration-300 ${activeTab === 'strategies' ? 'bg-zinc-700 text-white' : 'bg-zinc-800/80 text-zinc-500 group-hover:bg-zinc-700/80 group-hover:text-zinc-200'}`}>
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -188,13 +188,13 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
                         {/* 3. AI Builder Tab */}
                         <button 
                             onClick={() => onTabChange('education')}
-                            className={`group relative w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 overflow-hidden ${
+                            className={`group relative w-full flex items-center gap-3 px-4 py-2 rounded-2xl transition-all duration-300 overflow-hidden ${
                                 activeTab === 'education' 
                                     ? 'bg-gradient-to-r from-indigo-500/20 to-indigo-500/5 border border-indigo-500/30 text-indigo-400 shadow-[0_4px_20px_rgba(99,102,241,0.15)]' 
                                     : 'bg-transparent border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/40 hover:border-zinc-700/50'
                             }`}
                         >
-                            <div className={`p-2.5 rounded-xl transition-colors duration-300 ${activeTab === 'education' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-zinc-800/80 text-zinc-500 group-hover:bg-zinc-700/80 group-hover:text-zinc-200'}`}>
+                            <div className={`p-2 rounded-xl transition-colors duration-300 ${activeTab === 'education' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-zinc-800/80 text-zinc-500 group-hover:bg-zinc-700/80 group-hover:text-zinc-200'}`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                                 </svg>
@@ -216,13 +216,13 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
                         {/* 4. Analyze Chart Tab */}
                         <button 
                             onClick={() => onTabChange('analyze')}
-                            className={`group relative w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 overflow-hidden ${
+                            className={`group relative w-full flex items-center gap-3 px-4 py-2 rounded-2xl transition-all duration-300 overflow-hidden ${
                                 activeTab === 'analyze' 
                                     ? 'bg-gradient-to-r from-cyan-500/20 to-cyan-500/5 border border-cyan-500/30 text-cyan-400 shadow-[0_4px_20px_rgba(6,182,212,0.15)]' 
                                     : 'bg-transparent border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/40 hover:border-zinc-700/50'
                             }`}
                         >
-                            <div className={`p-2.5 rounded-xl transition-colors duration-300 ${activeTab === 'analyze' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-zinc-800/80 text-zinc-500 group-hover:bg-zinc-700/80 group-hover:text-zinc-200'}`}>
+                            <div className={`p-2 rounded-xl transition-colors duration-300 ${activeTab === 'analyze' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-zinc-800/80 text-zinc-500 group-hover:bg-zinc-700/80 group-hover:text-zinc-200'}`}>
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -238,14 +238,14 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
                 </nav>
 
                 {/* Footer Link Area */}
-                <div className="pt-8 mt-auto">
-                    <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent mb-6 opacity-50"></div>
+                <div className="pt-2 mt-auto">
+                    <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent mb-2 opacity-50"></div>
                     <div className="flex flex-col items-center justify-center gap-2">
                         <a
                             href="https://roadmaps.ir"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="group flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-zinc-800/50 transition-all duration-300"
+                            className="group flex items-center gap-2 px-3 py-1 rounded-xl hover:bg-zinc-800/50 transition-all duration-300"
                         >
                             <span className="text-sm font-bold text-zinc-500 group-hover:text-emerald-400 transition-colors">
                                 Roadmaps.ir

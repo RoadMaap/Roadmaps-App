@@ -90,7 +90,7 @@ const Login = ({ onLoginSuccess }) => {
                         className="w-20 h-20 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.3)] mb-6 relative group cursor-pointer"
                         title="Double-Click to bypass (Dev Mode)"
                     >
-                        <img src="/logo.svg" alt="RoadMaps Logo" className="w-full h-full object-cover" />
+                        <img src="/logo.png" alt="RoadMaps Logo" className="-translate-y-1 w-full h-full object-cover" />
                         <div className="absolute inset-0 rounded-2xl border-2 border-white/10 group-hover:scale-105 transition-transform duration-500"></div>
                     </div>
 
@@ -135,6 +135,15 @@ const Login = ({ onLoginSuccess }) => {
                                     </svg>
                                 </>
                             )}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={handleDevBypass}
+                            disabled={isLoading}
+                            className="mt-3 w-full rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {lang === 'fa' ? 'ورود موقت به برنامه (حالت توسعه)' : 'Enter app temporarily (Dev Mode)'}
                         </button>
 
                         {/* راهنما زیر دکمه در زمان لودینگ */}
