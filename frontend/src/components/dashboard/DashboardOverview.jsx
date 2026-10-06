@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import EnginePanel from '../EnginePanel';
-import RiskPanel from '../RiskPanel';
+import RiskPanel from '../riskpanel/RiskPanel';
 import Sparkline from '../Sparkline';
 import MetricCard from './MetricCard';
 
@@ -21,7 +21,7 @@ const DashboardOverview = ({
                     title={t('net_profit_today')}
                     value={`$${profit.toFixed(2)}`}
                     trend={profit > 0 ? 'up' : profit < 0 ? 'down' : 'neutral'}
-                    subValue={profit !== 0 ? `${profit > 0 ? '+' : '-'}${profit > 0 ? t('roi') || 'ROI' : t('drawdown') || 'Drawdown'}` : '0.0%'}
+                    subValue={profit !== 0 ? `${profit > 0 ? '+' : '-'}${profit > 0 ? t('roi') || 'ROI' : t('drawdown') || 'Drawdown'}` : undefined}
                     icon={<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 2v20m5-15H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>}
                 >
                     <div className="h-14 w-full opacity-90">
