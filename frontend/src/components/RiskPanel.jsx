@@ -108,8 +108,7 @@ const RiskPanel = ({ initialData, nextNews }) => {
     };
 
     return (
-        <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#121215] shadow-xl h-full min-h-[500px] flex flex-col group">
-            <div className="absolute top-0 right-0 w-full h-32 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"></div>
+        <div className="relative overflow-hidden rounded-lg border border-[#2F2E35] bg-[#1A191E] h-full min-h-[500px] flex flex-col group">
 
             <div className="flex-1 p-6 overflow-y-auto custom-scroll relative z-10 flex flex-col gap-6">
                 

@@ -43,9 +43,7 @@ const EnginePanel = ({ mt5Path, onPathChange, logs = [], isRunning, onToggle, on
         <div className="flex flex-col gap-6 font-sans h-full">
             
             {/* --- Control Center --- */}
-            <div className="bg-[#121215] border border-white/5 rounded-2xl p-6 relative overflow-hidden flex flex-col items-center justify-center min-h-[180px] shrink-0 group shadow-xl">
-                <div className={`absolute inset-0 bg-gradient-to-t from-emerald-500/20 to-transparent blur-2xl transition-opacity duration-700 ${isRunning ? 'opacity-100' : 'opacity-0'}`}></div>
-                <div className={`absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent transition-opacity duration-700 ${isRunning ? 'opacity-100' : 'opacity-0'}`}></div>
+            <div className={`relative flex min-h-[180px] shrink-0 flex-col items-center justify-center overflow-hidden rounded-lg border bg-[#1A191E] p-6 ${isRunning ? 'border-emerald-500/30' : 'border-[#2F2E35]'}`}>
 
                 <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-6 relative z-10">{t('trading_engine')}</h3>
                 
@@ -77,7 +75,7 @@ const EnginePanel = ({ mt5Path, onPathChange, logs = [], isRunning, onToggle, on
             </div>
 
             {/* --- Path Settings --- */}
-            <div className="bg-[#121215] border border-white/5 rounded-2xl p-4 shrink-0">
+            <div className="shrink-0 rounded-lg border border-[#2F2E35] bg-[#1A191E] p-4">
                 <div className="flex justify-between items-center mb-2">
                     <label className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">{t('terminal_path')}</label>
                     <span className={`w-2 h-2 rounded-full ${mt5Path ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
@@ -97,9 +95,9 @@ const EnginePanel = ({ mt5Path, onPathChange, logs = [], isRunning, onToggle, on
 
             {/* --- Console Logs --- */}
             {}
-            <div className="bg-[#121215] border border-white/5 rounded-2xl flex flex-col overflow-hidden shadow-inner shrink-0">
+            <div className="flex shrink-0 flex-col overflow-hidden rounded-lg border border-[#2F2E35] bg-[#1A191E]">
                 
-                <div className="flex justify-between items-center px-4 py-3 border-b border-white/5 bg-[#151518] shrink-0 group">
+                <div className="group flex shrink-0 items-center justify-between border-b border-[#2F2E35] bg-[#1E1D22] px-4 py-3">
                      <div className="flex items-center gap-2">
                          <svg className="w-3 h-3 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3" /></svg>
                          <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{t('live_logs')}</h3>
@@ -135,7 +133,7 @@ const EnginePanel = ({ mt5Path, onPathChange, logs = [], isRunning, onToggle, on
                 {}
                 <div 
                     ref={scrollViewportRef}
-                    className="h-96 overflow-y-auto custom-scroll p-4 font-mono text-[10px] space-y-2 bg-[#09090b]/50 scroll-smooth"
+                    className="h-96 overflow-y-auto custom-scroll space-y-2 bg-[#141318] p-4 font-mono text-[10px] scroll-smooth"
                 >
                     <div className="text-zinc-600 border-l-2 border-zinc-800 pl-2">System Initialized. Waiting for commands...</div>
                     {logs.map((log, index) => (

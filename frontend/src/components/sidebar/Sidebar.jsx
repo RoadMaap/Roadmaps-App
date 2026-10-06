@@ -9,7 +9,9 @@ import { useLanguage } from '../../context/LanguageContext';
 const Sidebar = ({ status, activeTab, onTabChange }) => {
     const { t, lang } = useLanguage();
     const markerAnimationRef = useRef(null);
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(() => (
+        typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+    ));
     const isRtl = lang === 'fa';
 
     const connectionState = status === 'Running'
