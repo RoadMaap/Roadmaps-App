@@ -195,7 +195,7 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
                                     }`}
                                 >
                                     <span className={`flex h-8 w-8 shrink-0 items-center justify-center ${isActive ? 'text-[#F28C45]' : 'text-[#7A797E] group-hover:text-[#F28C45]'}`}>
-                                        <span className="h-[18px] w-[18px] [&>svg]:h-full [&>svg]:w-full [&>svg]:stroke-[1.6]">
+                                        <span className={`h-[18px] w-[18px] [&>svg]:h-full [&>svg]:w-full [&>svg]:stroke-[1.6] ${item.id === 'strategies' ? 'translate-y-[1.5px]' : ''}`}>
                                             {item.icon}
                                         </span>
                                     </span>
