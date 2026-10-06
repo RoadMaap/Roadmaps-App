@@ -188,15 +188,17 @@ const Login = ({ onLoginSuccess }) => {
                                 >
                                     {lang === 'fa' ? 'ورود موقت (حالت توسعه)' : 'Enter app temporarily (Dev Mode)'}
                                 </button>
-                            </div>
 
-                            {isLoading && (
-                                <p className="mt-4 text-xs leading-6 text-[#7A797E]">
-                                    {lang === 'fa'
-                                        ? 'لطفاً ورود را در مرورگری که باز می‌شود کامل کنید.'
-                                        : 'Complete sign-in in the browser window that opens.'}
-                                </p>
-                            )}
+                                <div className="mt-3 h-12" aria-live="polite">
+                                    {isLoading && (
+                                        <p className="text-xs leading-6 text-[#7A797E]">
+                                            {lang === 'fa'
+                                                ? 'لطفاً ورود را در مرورگری که باز می‌شود کامل کنید.'
+                                                : 'Complete sign-in in the browser window that opens.'}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
 
                             {errorMsg && (
                                 <div className="mt-4 rounded-lg border border-rose-400/20 bg-rose-500/10 p-3" role="alert">

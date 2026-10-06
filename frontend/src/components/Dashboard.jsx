@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import Sidebar from './Sidebar';
+import Sidebar from './sidebar/Sidebar';
 import StatCard from './StatCard';
 import Sparkline from './Sparkline';
 import RiskPanel from './RiskPanel';
