@@ -1,26 +1,17 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 
 // ایجاد کانتکست برای مدیریت تم (دارک/لایت)
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-    // خواندن تم قبلی از حافظه مرورگر یا استفاده از حالت دارک به عنوان پیش‌فرض
-    const [theme, setTheme] = useState(localStorage.getItem('app_theme') || 'dark');
+    const theme = 'dark';
 
     useEffect(() => {
-        // اعمال کلاس 'dark' روی کل داکیومنت HTML برای Tailwind CSS
-        if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-        // ذخیره تم در حافظه
-        localStorage.setItem('app_theme', theme);
-    }, [theme]);
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('app_theme', 'dark');
+    }, []);
 
-    const toggleTheme = () => {
-        setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
-    };
+    const toggleTheme = () => {};
 
     return (
         <ThemeContext.Provider value={{ theme, toggleTheme }}>
