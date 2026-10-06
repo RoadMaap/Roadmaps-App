@@ -1,11 +1,14 @@
 import urllib.request
 import urllib.error
+import http.client
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 import time
 import threading
-import os
 import json
+import sys
+from pathlib import Path
+from runtime_paths import writable_backend_dir
 
 def ui_log(msg_type, msg):
     print(msg)
@@ -16,21 +19,44 @@ def ui_log(msg_type, msg):
     except Exception:
         pass
 
-def get_active_currencies():
+def _news_settings_path():
+    if getattr(sys, 'frozen', False):
+        return writable_backend_dir() / 'storage' / 'user_settings.json'
+    return Path(__file__).resolve().parents[1] / 'storage' / 'user_settings.json'
+
+
+def get_news_settings():
+    settings = {'nf_enabled': False, 'nf_eur': True, 'nf_usd': True}
     try:
-        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        settings_path = os.path.join(backend_dir, 'storage', 'user_settings.json')
-        if not os.path.exists(settings_path):
-            return ['EUR', 'USD']
-        with open(settings_path, 'r') as f:
-            import json
-            data = json.load(f)
-            curs = []
-            if data.get('nf_eur', True): curs.append('EUR')
-            if data.get('nf_usd', True): curs.append('USD')
-            return curs
+        with _news_settings_path().open('r', encoding='utf-8') as settings_file:
+            data = json.load(settings_file)
+        if isinstance(data, dict):
+            settings.update(data)
     except Exception:
-        return ['EUR', 'USD']
+        pass
+
+    def read_bool(value, default):
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {'true', '1', 'yes', 'on'}:
+                return True
+            if normalized in {'false', '0', 'no', 'off'}:
+                return False
+        return default
+
+    settings['nf_enabled'] = read_bool(settings.get('nf_enabled'), False)
+    settings['nf_eur'] = read_bool(settings.get('nf_eur'), True)
+    settings['nf_usd'] = read_bool(settings.get('nf_usd'), True)
+    return settings
+
+
+def get_active_currencies():
+    settings = get_news_settings()
+    if not settings['nf_enabled']:
+        return []
+    return [currency for currency, setting in (('EUR', 'nf_eur'), ('USD', 'nf_usd')) if settings[setting]]
 
 class NewsFilter:
     _instance = None
@@ -47,12 +73,14 @@ class NewsFilter:
         self.cache_minutes = cache_minutes
         self.news_data = []
         self.last_fetch_time = 0
+        self.next_fetch_time = 0
+        self.fetch_failures = 0
         self._initialized = True
 
     def fetch_news(self):
         current_time = time.time()
         
-        if self.news_data and (current_time - self.last_fetch_time) < (self.cache_minutes * 60):
+        if current_time < self.next_fetch_time:
             return self.news_data
 
         try:
@@ -93,13 +121,20 @@ class NewsFilter:
 
             self.news_data = sorted(parsed_news, key=lambda x: x['time'])
             self.last_fetch_time = current_time
+            self.next_fetch_time = current_time + self.cache_minutes * 60
+            self.fetch_failures = 0
             ui_log('success', f"🌍 [NEWS DAEMON] Synced {len(self.news_data)} High-Impact (EUR/USD) events.")
             
-        except urllib.error.URLError as e:
-            # Fallback Network: اگر اینترنت قطع بود، دیتای قدیمی را برگردان و برنامه را کرش نکن
-            ui_log('warning', f"📡 [NETWORK] Could not reach ForexFactory. Using cached news. Reason: {e}")
+        except (urllib.error.URLError, http.client.HTTPException, TimeoutError, OSError) as e:
+            self.fetch_failures += 1
+            retry_seconds = min(60 * (2 ** (self.fetch_failures - 1)), 900)
+            self.next_fetch_time = current_time + retry_seconds
+            ui_log('warning', f"📡 [NETWORK] Could not reach ForexFactory. Retrying in {retry_seconds}s. Reason: {e}")
         except Exception as e:
-            ui_log('error', f"⚠️ [NEWS DAEMON ERROR] XML Parsing failed: {e}")
+            self.fetch_failures += 1
+            retry_seconds = min(60 * (2 ** (self.fetch_failures - 1)), 900)
+            self.next_fetch_time = current_time + retry_seconds
+            ui_log('error', f"⚠️ [NEWS DAEMON ERROR] Feed parsing failed. Retrying in {retry_seconds}s. Reason: {e}")
             
         return self.news_data
 
@@ -109,6 +144,8 @@ class NewsFilter:
             
         current_utc = datetime.utcnow()
         active_curs = get_active_currencies() 
+        if not active_curs:
+            return None
         
         for news in self.news_data:
             if news['currency'] not in active_curs:
@@ -137,6 +174,8 @@ class NewsTickerDaemon(threading.Thread):
         super().__init__()
         self.daemon = True 
         self.news_filter = NewsFilter()
+        self.news_was_enabled = get_news_settings()['nf_enabled']
+        self.last_ui_news = None
 
     def run(self):
         time.sleep(2) 
@@ -144,13 +183,27 @@ class NewsTickerDaemon(threading.Thread):
         
         while True:
             try:
+                news_enabled = get_news_settings()['nf_enabled']
+                if not news_enabled:
+                    self.news_filter.news_data = []
+                    self.news_filter.next_fetch_time = 0
+                    if self.news_was_enabled or self.last_ui_news is not None:
+                        import eel
+                        if hasattr(eel, 'update_news_ticker'):
+                            eel.update_news_ticker(None)
+                    self.news_was_enabled = False
+                    self.last_ui_news = None
+                    time.sleep(1)
+                    continue
+
+                self.news_was_enabled = True
                 self.news_filter.fetch_news()
                 next_news = self.news_filter.get_next_news_ui()
-                
-                if next_news:
+                if next_news != self.last_ui_news:
                     import eel
                     if hasattr(eel, 'update_news_ticker'):
                         eel.update_news_ticker(next_news)
+                    self.last_ui_news = next_news
             except Exception:
                 pass
             

@@ -57,6 +57,9 @@ def attempt_login():
                 "first_name": user_data.get("first_name") or nested_user.get("first_name"),
                 "last_name": user_data.get("last_name") or nested_user.get("last_name"),
             }
+            profile["name"] = " ".join(
+                part for part in (profile["first_name"], profile["last_name"]) if part
+            ) or profile["username"] or profile["email"]
 
             ACTIVE_SESSION["access_token"] = user_data.get("access")
             ACTIVE_SESSION["refresh_token"] = user_data.get("refresh")

@@ -10,7 +10,11 @@ import numpy as np
 
 def ui_log(msg_type, text):
     """Safely routes logs to terminal stdout and React Frontend Debugger."""
-    print(text)
+    try:
+        print(text)
+    except Exception:
+        pass
+
     try:
         import eel
         if hasattr(eel, 'update_status'):

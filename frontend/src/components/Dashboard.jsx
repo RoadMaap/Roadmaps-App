@@ -23,6 +23,7 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
     const [strategies, setStrategies] = useState({});
     const [userName, setUserName] = useState('');
     const [showOptionalModal, setShowOptionalModal] = useState(false);
+    const [dismissedOptionalVersion, setDismissedOptionalVersion] = useState(null);
     
     // News Ticker State
     const [nextNews, setNextNews] = useState(null);
@@ -53,7 +54,11 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
                     }
 
                     const authStatus = await window.eel.get_auth_status()();
-                    const authenticatedUserName = authStatus?.profile?.username;
+                    const profile = authStatus?.profile;
+                    const authenticatedUserName = profile?.name
+                        || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ')
+                        || profile?.username
+                        || profile?.email?.split('@')[0];
                     if (authenticatedUserName) setUserName(authenticatedUserName);
                 } catch (error) {
                     console.error("Error fetching initial data from Eel:", error);
@@ -84,6 +89,18 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
             mainContentRef.current.scrollTop = 0;
         }
     }, [activeTab]);
+
+    useEffect(() => {
+        const optionalVersion = updateInfo?.latest_version ?? 'available';
+        if (updateInfo && updateInfo.is_force_update !== true && optionalVersion !== dismissedOptionalVersion) {
+            setShowOptionalModal(true);
+        }
+    }, [updateInfo, dismissedOptionalVersion]);
+
+    const dismissOptionalModal = () => {
+        setDismissedOptionalVersion(updateInfo?.latest_version ?? 'available');
+        setShowOptionalModal(false);
+    };
 
     function update_news_ticker(newsData) {
         setNextNews(newsData);
@@ -333,7 +350,7 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
                     className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-all duration-300"
                     role="presentation"
                     onMouseDown={(event) => {
-                        if (event.target === event.currentTarget) setShowOptionalModal(false);
+                        if (event.target === event.currentTarget) dismissOptionalModal();
                     }}
                 >
                     <section
@@ -384,7 +401,7 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
                             <div className="mt-8 flex items-center justify-end gap-3">
                                 <button
                                     type="button"
-                                    onClick={() => setShowOptionalModal(false)}
+                                    onClick={dismissOptionalModal}
                                     className="rounded-xl border border-white/5 bg-transparent px-5 py-3 text-sm font-semibold text-zinc-400 transition-all duration-200 hover:bg-white/5 hover:text-white active:scale-95"
                                 >
                                     {t('update_remind_later')}
@@ -392,6 +409,7 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
                                 <button
                                     type="button"
                                     onClick={() => {
+                                        setDismissedOptionalVersion(updateInfo?.latest_version ?? 'available');
                                         setShowOptionalModal(false);
                                         onStartOptionalUpdate?.();
                                     }}

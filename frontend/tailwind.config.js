@@ -8,15 +8,19 @@ export default {
   theme: {
     extend: {
       fontFamily: { 
-        sans: ['Vazirmatn', 'ui-sans-serif', 'system-ui'],
+        sans: ['Vazirmatn', 'sans-serif'],
         vazir: ['Vazirmatn', 'sans-serif'],
       },
       colors: {
-        page: '#09090b', // رنگ پس‌زمینه اصلی
-        panel: '#121215', // رنگ پنل‌ها
-        border: 'rgba(255,255,255,0.06)',
-        primary: '#10b981', // سبز زمردی
-        danger: '#f43f5e', // قرمز
+        page: 'var(--bg-page)',
+        panel: 'var(--bg-card)',
+        border: 'var(--border-color)',
+        primary: 'var(--primary)',
+        danger: 'var(--error)',
+        success: 'var(--success)',
+        warning: 'var(--warning)',
+        'text-primary': 'var(--text-primary)',
+        'text-secondary': 'var(--text-secondary)',
       },
     },
   },

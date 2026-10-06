@@ -14,6 +14,7 @@ from PIL import Image
 
 # 🛠 1. ایمپورت کتابخانه dotenv
 from dotenv import load_dotenv
+from runtime_paths import writable_backend_dir
 
 # 🛠 2. لود کردن متغیرهای محیطی از فایل .env
 load_dotenv()
@@ -165,8 +166,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class GeminiVisionClient:
     def __init__(self):
-        backend_dir = os.path.dirname(os.path.dirname(__file__))
-        self.settings_path = os.path.join(backend_dir, 'storage', 'user_settings.json') # 🛠 اصلاح مسیر به storage
+        self.settings_path = str(writable_backend_dir() / 'storage' / 'user_settings.json')
         
         self.proxies_to_try = [
             None, 

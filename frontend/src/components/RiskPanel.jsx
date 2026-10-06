@@ -95,6 +95,18 @@ const RiskPanel = ({ initialData, nextNews }) => {
         setTimeout(() => setIsSaving(false), 800);
     };
 
+    const handleNewsToggle = async (event) => {
+        const enabled = event.target.checked;
+        setNfEnabled(enabled);
+        if (window.eel) {
+            try {
+                await window.eel.save_user_config({ nf_enabled: enabled })();
+            } catch (error) {
+                console.error('Could not persist News Filter toggle:', error);
+            }
+        }
+    };
+
     return (
         <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#121215] shadow-xl h-full min-h-[500px] flex flex-col group">
             <div className="absolute top-0 right-0 w-full h-32 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"></div>
@@ -169,7 +181,7 @@ const RiskPanel = ({ initialData, nextNews }) => {
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3">
                                     <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={nfEnabled} onChange={(e) => setNfEnabled(e.target.checked)} className="sr-only peer" />
+                                        <input type="checkbox" checked={nfEnabled} onChange={handleNewsToggle} className="sr-only peer" />
                                         <div className="w-9 h-5 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-500 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500 peer-checked:after:bg-white"></div>
                                     </label>
                                     <div className="flex items-center">
