@@ -43,7 +43,7 @@ const EnginePanel = ({ mt5Path, onPathChange, logs = [], isRunning, onToggle, on
         <div className="flex flex-col gap-6 font-sans h-full">
             
             {/* --- Control Center --- */}
-            <div className={`relative flex min-h-[180px] shrink-0 flex-col items-center justify-center overflow-hidden rounded-lg border bg-[#1A191E] p-6 ${isRunning ? 'border-emerald-500/30' : 'border-[#2F2E35]'}`}>
+            <div className="relative flex min-h-[180px] shrink-0 flex-col items-center justify-center overflow-hidden rounded-lg border border-[#2F2E35] bg-[#1A191E] p-6">
 
                 <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-6 relative z-10">{t('trading_engine')}</h3>
                 
