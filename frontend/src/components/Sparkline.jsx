@@ -114,10 +114,10 @@ const Sparkline = ({ data = EMPTY_DATA, color = "#10b981", centered = false }) =
         </filter>
       </defs>
       {/* ناحیه پر شده زیر نمودار */}
-      <path d={fillD} fill={`url(#${gradientId})`} stroke="none" filter={`url(#${blurId})`} className="transition-[d] duration-500 ease-out" />
+      <path d={fillD} fill={`url(#${gradientId})`} stroke="none" filter={`url(#${blurId})`} />
       <path d={pathD} stroke={color} strokeWidth="7" fill="none" opacity="0.3" filter={`url(#${blurId})`} />
       {/* خط اصلی نمودار با ضخامت 2 */}
-      <path d={pathD} stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" className="transition-[d] duration-500 ease-out" />
+      <path d={pathD} stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 };
