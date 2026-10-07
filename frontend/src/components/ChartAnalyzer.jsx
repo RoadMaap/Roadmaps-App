@@ -245,10 +245,10 @@ const ChartAnalyzer = () => {
             )}
 
             {/* Page Header & API Key */}
-            <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
-                <div>
+            <div className="mb-8 flex flex-col gap-4 shrink-0">
+                <div className="flex flex-col items-start gap-3">
                     <h1 className="text-2xl font-bold text-white flex items-center gap-2 tracking-tight">
-                        <div className="w-10 h-10 bg-cyan-500/10 border border-cyan-500/30 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+                        <div className="w-10 h-10 flex items-center justify-center">
                             <svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -257,18 +257,18 @@ const ChartAnalyzer = () => {
                         {t('vision_trade_engine')}
                     </h1>
                     <p className="text-zinc-500 text-sm mt-1">{t('vision_engine_desc')}</p>
-                </div>
-                <div className="flex items-center gap-2 bg-[#151518] border border-white/5 focus-within:border-cyan-500/30 rounded-xl p-1.5 px-3 transition-all max-w-sm w-full shadow-inner z-10">
-                    <svg className="w-4 h-4 text-zinc-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
-                    <input 
-                        type="password" 
-                        value={apiKey} 
-                        onChange={(e) => setApiKey(e.target.value)}
-                        onBlur={saveApiKey}
-                        placeholder="Google Gemini API Key..."
-                        dir="ltr"
-                        className="w-full bg-transparent border-none outline-none text-xs font-mono text-zinc-300 placeholder-zinc-700 py-1"
-                    />
+                    <div className="flex items-center gap-2 bg-[#151518] border border-white/5 focus-within:border-cyan-500/30 rounded-xl p-1.5 px-3 transition-all max-w-sm w-full shadow-inner z-10">
+                        <svg className="w-4 h-4 text-zinc-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+                        <input 
+                            type="password" 
+                            value={apiKey} 
+                            onChange={(e) => setApiKey(e.target.value)}
+                            onBlur={saveApiKey}
+                            placeholder="Google Gemini API Key..."
+                            dir="ltr"
+                            className="w-full bg-transparent border-none outline-none text-xs font-mono text-zinc-300 placeholder-zinc-700 py-1"
+                        />
+                    </div>
                 </div>
             </div>
 
