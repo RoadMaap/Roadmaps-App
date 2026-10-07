@@ -23,7 +23,6 @@ const DashboardOverview = ({
                             <span className="text-[10px] font-semibold uppercase text-[#7A797E]">{t('net_profit_today')}</span>
                         </div>
                         <p className={`mt-4 text-2xl font-bold tabular-nums ${profit > 0 ? 'text-emerald-300' : profit < 0 ? 'text-[#E47770]' : 'text-[#FCFCFD]'}`}>${profit.toFixed(2)}</p>
-                        {profit !== 0 && <p className={`mt-1 text-[10px] font-semibold ${profit > 0 ? 'text-emerald-300' : 'text-[#E47770]'}`}>{profit > 0 ? '+' : '-'}{profit > 0 ? t('roi') || 'ROI' : t('drawdown') || 'Drawdown'}</p>}
                         <div className="mt-auto flex h-12 w-full translate-y-2 justify-center pt-2 opacity-90">
                             <div className="h-full w-full">
                                 <Sparkline data={profitHistory || []} color={profit < 0 ? '#E47770' : '#10B981'} centered />
