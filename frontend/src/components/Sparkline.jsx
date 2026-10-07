@@ -1,4 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+
+const EMPTY_DATA = [];
 
 const getPath = (data, width, height, centered) => {
   if (data.length === 0) return "";
@@ -39,7 +41,9 @@ const getPath = (data, width, height, centered) => {
   }, "");
 };
 
-const Sparkline = ({ data = [], color = "#10b981", centered = false }) => {
+const Sparkline = ({ data = EMPTY_DATA, color = "#10b981", centered = false }) => {
+  const [animatedData, setAnimatedData] = useState(data);
+  const animatedDataRef = useRef(data);
   // ابعاد viewBox
   const width = 100;
   const height = 45; // کمی ارتفاع را بیشتر کردم تا جا بازتر باشد
@@ -47,15 +51,54 @@ const Sparkline = ({ data = [], color = "#10b981", centered = false }) => {
   const gradientId = `sparkGradient-${colorId}`;
   const blurId = `sparkBlur-${colorId}`;
 
+  useEffect(() => {
+    const targetData = Array.isArray(data) ? data : EMPTY_DATA;
+    const startingData = animatedDataRef.current;
+    if (targetData.length === 0) {
+      animatedDataRef.current = targetData;
+      setAnimatedData(targetData);
+      return undefined;
+    }
+
+    const pointCount = Math.max(startingData.length, targetData.length);
+    const padData = (values, fallback) => [
+      ...Array(Math.max(0, pointCount - values.length)).fill(values[0] ?? fallback),
+      ...values,
+    ];
+    const from = padData(startingData, targetData[0]);
+    const to = padData(targetData, targetData[0]);
+    const startedAt = performance.now();
+    const duration = 360;
+    let animationFrame;
+
+    const animate = (now) => {
+      const progress = Math.min((now - startedAt) / duration, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      const nextData = to.map((value, index) => from[index] + (value - from[index]) * easedProgress);
+      animatedDataRef.current = nextData;
+      setAnimatedData(nextData);
+
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      } else {
+        animatedDataRef.current = targetData;
+        setAnimatedData(targetData);
+      }
+    };
+
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [data]);
+
   const { pathD, fillD } = useMemo(() => {
-    if (!data || data.length < 2) return { pathD: "", fillD: "" };
-    const d = getPath(data, width, height, centered);
+    if (!animatedData || animatedData.length < 2) return { pathD: "", fillD: "" };
+    const d = getPath(animatedData, width, height, centered);
     return {
       pathD: d,
       // بستن ناحیه پر شده به کف نمودار
       fillD: `${d} V ${height} H 0 Z`
     };
-  }, [data, height, centered]); // height به وابستگی‌ها اضافه شد
+  }, [animatedData, height, centered]);
 
   return (
     // overflow-visible می‌گذاریم تا اگر احیاناً پیکسلی بیرون زد، دیده شود

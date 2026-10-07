@@ -26,7 +26,7 @@ const DashboardOverview = ({
                         {profit !== 0 && <p className={`mt-1 text-[10px] font-semibold ${profit > 0 ? 'text-emerald-300' : 'text-[#E47770]'}`}>{profit > 0 ? '+' : '-'}{profit > 0 ? t('roi') || 'ROI' : t('drawdown') || 'Drawdown'}</p>}
                         <div className="mt-auto flex h-12 w-full translate-y-2 justify-center pt-2 opacity-90">
                             <div className="h-full w-full">
-                                <Sparkline data={profitHistory || []} color="#10B981" centered />
+                                <Sparkline data={profitHistory || []} color={profit < 0 ? '#E47770' : '#10B981'} centered />
                             </div>
                         </div>
                     </div>
