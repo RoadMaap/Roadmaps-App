@@ -127,7 +127,7 @@ const RiskPanel = ({ initialData, nextNews }) => {
                     type="button"
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="group flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 text-sm font-semibold text-white shadow-[0_4px_15px_rgba(79,70,229,0.25)] transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-70"
+                    className="group flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-emerald-500 px-4 text-sm font-semibold text-white shadow-[0_4px_15px_rgba(16,185,129,0.25)] transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                     {isSaving ? (
                         <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">

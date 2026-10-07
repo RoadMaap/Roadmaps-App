@@ -10,6 +10,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 BACKEND_DIR = PROJECT_ROOT / 'backend'
 FRONTEND_DIR = PROJECT_ROOT / 'frontend'
 FRONTEND_DIST = FRONTEND_DIR / 'dist'
+APP_ICON = FRONTEND_DIR / 'public' / 'favicon.ico'
 ENTRY_POINT = BACKEND_DIR / 'Main.py'
 VERSION_SEED = BACKEND_DIR / 'build_assets' / 'current_version.txt'
 SETTINGS_SEED = BACKEND_DIR / 'build_assets' / 'default_user_settings.json'
@@ -41,6 +42,8 @@ def run(command: list[str], *, cwd: Path | None = None) -> None:
 def main() -> None:
     if not ENTRY_POINT.is_file():
         raise FileNotFoundError(f'Application entry point not found: {ENTRY_POINT}')
+    if not APP_ICON.is_file():
+        raise FileNotFoundError(f'Application icon not found: {APP_ICON}')
     for seed in (VERSION_SEED, SETTINGS_SEED, STRATEGIES_SEED):
         if not seed.is_file():
             raise FileNotFoundError(f'Packaged seed file not found: {seed}')
@@ -65,6 +68,8 @@ def main() -> None:
         '--windowed',
         '--name',
         'Roadmaps App',
+        '--icon',
+        str(APP_ICON),
         '--paths',
         str(BACKEND_DIR),
         '--add-data',

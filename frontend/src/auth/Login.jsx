@@ -86,33 +86,18 @@ const Login = ({ onLoginSuccess }) => {
                             <div className="flex items-center gap-3">
                                 <div
                                     onDoubleClick={handleDevBypass}
-                                    className="relative h-12 w-12 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-[#2F2E35] bg-[#141318]"
+                                    className="relative h-12 w-12 shrink-0 cursor-pointer overflow-hidden rounded-xl"
                                     title="Double-Click to bypass (Dev Mode)"
                                 >
-                                    <img src="/logo.png" alt="RoadMaps Logo" className="-translate-y-0.5 h-full w-full object-cover" />
+                                    <img src="/logo.png" alt="Trading App Logo" className="-translate-y-0.5 h-full w-full object-cover" />
                                 </div>
                                 <div>
                                     <p className="text-lg font-bold leading-tight text-[#FCFCFD]">
-                                        {t('Roadmaps')} <span className="font-normal text-[#BDBABD]">{t('App')}</span>
+                                        Trading <span className="font-normal text-[#BDBABD]">App</span>
                                     </p>
                                     <p className="mt-1 text-[11px] font-medium uppercase text-[#7A797E]">
                                         {lang === 'fa' ? 'نسخه دسکتاپ' : 'Desktop client'}
                                     </p>
-                                </div>
-                            </div>
-
-                            <div className="mt-10 hidden border-t border-[#2F2E35] pt-6 sm:block lg:mt-16">
-                                <p className="text-[10px] font-semibold uppercase text-[#7A797E]">
-                                    {lang === 'fa' ? 'محیط کاری' : 'Workspace'}
-                                </p>
-                                <div className="mt-4 flex items-center justify-between gap-3">
-                                    <span className="text-sm font-medium text-[#BDBABD]">RoadMaps</span>
-                                    <span
-                                        className="rounded-md border border-[#2F2E35] bg-[#2A292F] px-2 py-1 font-mono text-[10px] text-[#BDBABD]"
-                                        aria-label={lang === 'fa' ? `نسخه برنامه ${appVersion}` : `App version ${appVersion}`}
-                                    >
-                                        v{appVersion}
-                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -123,30 +108,27 @@ const Login = ({ onLoginSuccess }) => {
                         </div>
                     </aside>
 
-                    <main className="flex min-h-[500px] flex-col p-6 sm:p-8 lg:p-10">
-                        <header className="flex items-center justify-between gap-4">
+                    <main className="flex min-h-[500px] flex-col p-6 sm:p-8 lg:px-10 lg:pb-8 lg:pt-10">
+                        <header className="flex items-start justify-between gap-4">
                             <p className="text-[10px] font-semibold uppercase text-[#7A797E]">
-                                {lang === 'fa' ? 'حساب کاربری / ورود' : 'Account / Sign in'}
+                                {lang === 'fa' ? 'حساب کاربری / ورود' : 'Account / log in'}
                             </p>
                             <button
                                 type="button"
                                 onClick={toggleLanguage}
-                                className="flex h-9 min-w-11 items-center justify-center rounded-lg border border-[#2F2E35] bg-[#1E1D22] px-3 text-xs font-semibold text-[#BDBABD] transition-colors hover:bg-[#2A292F] hover:text-[#FCFCFD]"
-                                title="Switch Language"
+                                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#2F2E35] bg-[#1E1D22] text-[#BDBABD] transition-colors hover:bg-[#2A292F] hover:text-[#FCFCFD]"
+                                title={lang === 'fa' ? 'Switch to English' : 'تغییر زبان به فارسی'}
+                                aria-label={lang === 'fa' ? 'Switch to English' : 'تغییر زبان به فارسی'}
                             >
-                                {lang === 'fa' ? 'EN' : 'FA'}
+                                <svg className="h-4 w-4 text-[#F28C45]" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="9" strokeWidth="1.7" />
+                                    <path strokeLinecap="round" strokeWidth="1.7" d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+                                </svg>
                             </button>
                         </header>
 
-                        <div className="my-auto w-full max-w-[470px] py-8 md:py-6">
-                            <div className="mb-6 inline-flex items-center gap-2 rounded-md border border-[#2F2E35] bg-[#1E1D22] px-3 py-2 text-[11px] font-medium text-[#BDBABD]">
-                                <svg className="h-4 w-4 text-[#7A797E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" d="M12 3 5 6v5c0 4.6 2.9 8.1 7 10 4.1-1.9 7-5.4 7-10V6l-7-3Z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" d="m9 12 2 2 4-4" />
-                                </svg>
-                                {lang === 'fa' ? 'ورود به حساب RoadMaps' : 'RoadMaps account access'}
-                            </div>
-
+                        <div className="flex w-full max-w-[470px] flex-1 flex-col pt-8 md:pt-6">
+                            <div className="flex flex-1 flex-col justify-center">
                             <h1 className="text-3xl font-bold leading-tight text-[#FCFCFD] sm:text-4xl">
                                 {lang === 'fa' ? 'خوش آمدید' : 'Welcome back'}
                             </h1>
@@ -156,7 +138,9 @@ const Login = ({ onLoginSuccess }) => {
                                     : 'Connect your account through the browser to continue.'}
                             </p>
 
-                            <div className="mt-9 space-y-3">
+                            </div>
+
+                            <div className="mt-8 space-y-3">
                                 <button
                                     onClick={handleWebLogin}
                                     disabled={isLoading}
@@ -189,22 +173,22 @@ const Login = ({ onLoginSuccess }) => {
                                     {lang === 'fa' ? 'ورود موقت (حالت توسعه)' : 'Enter app temporarily (Dev Mode)'}
                                 </button>
 
-                                <div className="mt-3 h-12" aria-live="polite">
+                                <div aria-live="polite">
                                     {isLoading && (
-                                        <p className="text-xs leading-6 text-[#7A797E]">
+                                        <p className="mt-3 text-xs leading-6 text-[#7A797E]">
                                             {lang === 'fa'
                                                 ? 'لطفاً ورود را در مرورگری که باز می‌شود کامل کنید.'
                                                 : 'Complete sign-in in the browser window that opens.'}
                                         </p>
                                     )}
                                 </div>
-                            </div>
 
-                            {errorMsg && (
-                                <div className="mt-4 rounded-lg border border-rose-400/20 bg-rose-500/10 p-3" role="alert">
-                                    <p className="text-xs font-medium text-rose-300">{errorMsg}</p>
-                                </div>
-                            )}
+                                {errorMsg && (
+                                    <div className="mt-4 rounded-lg border border-rose-400/20 bg-rose-500/10 p-3" role="alert">
+                                        <p className="text-xs font-medium text-rose-300">{errorMsg}</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <footer className="border-t border-[#2F2E35] pt-4 text-[11px] text-[#7A797E] sm:hidden">

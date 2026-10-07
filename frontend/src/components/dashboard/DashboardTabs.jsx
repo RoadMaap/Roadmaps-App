@@ -25,7 +25,7 @@ const DashboardTabs = ({
                 onClearLogs={onClearLogs}
             />
         </section>
-        <section className={`h-full min-h-0 animate-fade-in ${activeTab === 'strategies' ? 'block' : 'hidden'}`}>
+        <section className={`h-full min-h-0 min-w-0 animate-fade-in ${activeTab === 'strategies' ? 'block' : 'hidden'}`}>
             <StrategyPanel strategies={strategies} onStrategiesChange={onStrategiesChange} onUpdateConfig={onUpdateConfig} />
         </section>
         <section className={`h-full min-h-0 animate-fade-in ${activeTab === 'education' ? 'block' : 'hidden'}`}>

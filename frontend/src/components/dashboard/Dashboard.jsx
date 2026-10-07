@@ -153,7 +153,7 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
         <div className="flex h-screen flex-col overflow-hidden bg-[#141318] font-sans text-[#FCFCFD] selection:bg-[#F28C45]/20">
             <div className="relative flex flex-1 overflow-hidden">
                 <Sidebar status={status} activeTab={activeTab} onTabChange={setActiveTab} />
-                <main ref={mainContentRef} className="relative z-10 flex h-full min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-[#141318] custom-scroll">
+                <main ref={mainContentRef} className="relative z-10 flex h-full min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] bg-[#141318] custom-scroll">
                     <div
                         aria-hidden="true"
                         className="pointer-events-none absolute inset-0 opacity-25"

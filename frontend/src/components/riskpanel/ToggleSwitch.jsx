@@ -9,7 +9,7 @@ const ToggleSwitch = ({ checked, onChange, label }) => (
             aria-label={label}
             className="peer sr-only"
         />
-        <span className="absolute inset-0 rounded-full bg-[#2F2E35] transition-colors peer-focus-visible:outline peer-focus-visible:outline-1 peer-focus-visible:outline-indigo-400 peer-checked:bg-indigo-500 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:content-[''] after:rounded-full after:border after:border-[#7A797E] after:bg-[#BDBABD] after:transition-transform peer-checked:after:translate-x-4 peer-checked:after:border-white peer-checked:after:bg-white" />
+        <span className="absolute inset-0 rounded-full bg-[#2F2E35] transition-colors peer-focus-visible:outline peer-focus-visible:outline-1 peer-focus-visible:outline-emerald-400 peer-checked:bg-emerald-500 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:content-[''] after:rounded-full after:border after:border-[#7A797E] after:bg-[#BDBABD] after:transition-transform peer-checked:after:translate-x-4 peer-checked:after:border-white peer-checked:after:bg-white" />
     </label>
 );
 

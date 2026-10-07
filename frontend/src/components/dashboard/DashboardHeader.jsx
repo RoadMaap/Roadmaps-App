@@ -45,10 +45,14 @@ const DashboardHeader = ({ activeTab, userName, strategyCount, hasUpdate, onShow
                 <button
                     type="button"
                     onClick={onToggleLanguage}
-                    className="flex h-10 min-w-10 items-center justify-center rounded-md border border-[#2F2E35] bg-[#1E1D22] px-2 text-xs font-semibold text-[#BDBABD] transition-colors hover:bg-[#2A292F] hover:text-[#FCFCFD] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#F28C45]"
-                    title="Switch language"
+                    className="flex h-10 w-10 items-center justify-center rounded-md border border-[#2F2E35] bg-[#1E1D22] text-[#F28C45] transition-colors hover:bg-[#2A292F] hover:text-[#FCFCFD] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#F28C45]"
+                    title={lang === 'fa' ? 'Switch to English' : 'تغییر زبان به فارسی'}
+                    aria-label={lang === 'fa' ? 'Switch to English' : 'تغییر زبان به فارسی'}
                 >
-                    {lang === 'fa' ? 'EN' : 'FA'}
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" strokeWidth="1.7" />
+                        <path strokeLinecap="round" strokeWidth="1.7" d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+                    </svg>
                 </button>
             </div>
         </header>

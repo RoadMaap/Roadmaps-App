@@ -23,13 +23,13 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
         : status === 'Ready'
             ? {
                 label: t('ready') || 'READY',
-                indicator: 'bg-blue-400',
-                text: 'text-blue-300',
+                indicator: 'bg-emerald-400',
+                text: 'text-emerald-300',
             }
             : {
                 label: t('stopped') || 'STOPPED',
-                indicator: 'bg-[#7A797E]',
-                text: 'text-[#BDBABD]',
+                indicator: 'bg-rose-500',
+                text: 'text-rose-400',
             };
 
     const navigationItems = [
@@ -231,7 +231,7 @@ const Sidebar = ({ status, activeTab, onTabChange }) => {
                             className="flex min-h-10 min-w-0 items-center rounded-lg hover:bg-[#1E1D22]"
                         >
                             <span className="flex h-10 w-11 shrink-0 items-center justify-center">
-                                <span className={`h-2 w-2 rounded-full ${connectionState.indicator} ${status === 'Running' ? 'animate-pulse' : ''}`} />
+                                <span className={`h-2 w-2 rounded-full ${connectionState.indicator} ${status !== 'Disconnected' ? 'animate-pulse' : ''}`} />
                             </span>
                             {!isCollapsed && (
                                 <div dir={isRtl ? 'rtl' : 'ltr'} className="ms-1.5 min-w-0">

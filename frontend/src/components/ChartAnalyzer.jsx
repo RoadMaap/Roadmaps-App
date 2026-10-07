@@ -219,7 +219,7 @@ const ChartAnalyzer = () => {
     const isTradeable = result && result.trade_bias !== 'NEUTRAL' && result.trade_bias !== 'WAIT' && !(result.market_state?.includes('ERROR')) && symbol.trim().length > 0;
 
     return (
-        <div className="flex flex-col w-full h-full p-6 bg-[#0e0e11] text-zinc-300 font-sans overflow-y-auto custom-scroll relative" dir={lang === 'fa' ? 'rtl' : 'ltr'}>
+        <div className="relative flex h-full w-full flex-col overflow-y-auto bg-transparent p-6 font-sans text-zinc-300 custom-scroll" dir={lang === 'fa' ? 'rtl' : 'ltr'}>
             
             {/* Toast Notification Modal */}
             {toast.show && (
