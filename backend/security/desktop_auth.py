@@ -81,7 +81,11 @@ def _open_private_browser(login_url):
             elif private_args == ['-private-window']:
                 profile_args = ['-profile', profile_dir.name, '-no-remote', *private_args]
             try:
-                process = subprocess.Popen([executable, *profile_args, login_url], close_fds=True)
+                process = subprocess.Popen(
+                    [executable, *profile_args, login_url],
+                    close_fds=True,
+                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+                )
                 return process, profile_dir
             except OSError:
                 profile_dir.cleanup()
@@ -102,6 +106,7 @@ def _close_private_browser(process, profile_dir):
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 check=False,
+                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
             )
         else:
             process.terminate()

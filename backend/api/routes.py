@@ -2,6 +2,9 @@ import eel
 import os
 import sys
 import subprocess
+import json
+import tempfile
+from pathlib import Path
 
 # --- 1. SYSTEM PATH INJECTION ---
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -165,19 +168,43 @@ def clear_active_strategy():
 # --- 6. NATIVE OS DIALOGS ---
 def _open_file_dialog_subprocess(title, filetypes):
     """Spawns an isolated Tkinter process to display native file selection dialogs safely."""
-    dialog_code = f"import tkinter, os, sys; from tkinter import filedialog; root=tkinter.Tk(); root.withdraw(); root.wm_attributes('-topmost', 1); path=filedialog.askopenfilename(title='{title}', filetypes={filetypes}); root.destroy(); print(path) if path else None"
+    result_descriptor, result_filename = tempfile.mkstemp(prefix='roadmaps-dialog-', suffix='.txt')
+    os.close(result_descriptor)
+    result_path = Path(result_filename)
+
+    payload = json.dumps({'title': title, 'filetypes': filetypes})
+    if getattr(sys, 'frozen', False):
+        command = [sys.executable, '--worker-mode', 'native-file-dialog', payload, str(result_path)]
+    else:
+        main_script = Path(__file__).resolve().parents[1] / 'Main.py'
+        command = [sys.executable, str(main_script), '--worker-mode', 'native-file-dialog', payload, str(result_path)]
+
+    startup_info = None
+    if os.name == 'nt':
+        startup_info = subprocess.STARTUPINFO()
+        startup_info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
     try:
-        si = subprocess.STARTUPINFO()
-        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        proc = subprocess.run([sys.executable, "-c", dialog_code], capture_output=True, text=True, startupinfo=si)
-        return proc.stdout.strip() or None
-    except: 
+        process = subprocess.run(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            startupinfo=startup_info,
+            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+        )
+        if process.returncode != 0:
+            return None
+        return result_path.read_text(encoding='utf-8').strip() or None
+    except Exception:
         return None
+    finally:
+        result_path.unlink(missing_ok=True)
 
 @eel.expose
 def choose_mt5_path():
     """Opens a dialog allowing the user to locate their MetaTrader 5 executable."""
-    path = _open_file_dialog_subprocess('Select terminal64.exe', "[('Exe', '*.exe')]")
+    path = _open_file_dialog_subprocess('Select terminal64.exe', [('Exe', '*.exe')])
     if path:
         jm.save_settings_to_file({'mt5_path': path})
         return path
@@ -186,7 +213,7 @@ def choose_mt5_path():
 @eel.expose
 def open_strategy_file_dialog():
     """Opens a dialog allowing the user to select a Python strategy file."""
-    return _open_file_dialog_subprocess('Select Strategy Python File', "[('Python', '*.py')]")
+    return _open_file_dialog_subprocess('Select Strategy Python File', [('Python', '*.py')])
 
 
 # --- 7. ENGINE COMMAND ENDPOINTS ---

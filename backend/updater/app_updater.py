@@ -281,7 +281,7 @@ class AppUpdater:
             pass
 
         creation_flags = (
-            getattr(subprocess, 'DETACHED_PROCESS', 0)
+            getattr(subprocess, 'CREATE_NO_WINDOW', 0)
             | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)
         )
         subprocess.Popen(

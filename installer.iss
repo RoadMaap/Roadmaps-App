@@ -30,7 +30,8 @@ WizardImageStretch=yes
 ; ---------------------------------------------------------
 DefaultDirName={autopf}\RoadmapsApp
 DefaultGroupName={#AppName}
-UninstallDisplayIcon={app}\{#AppExeName}
+UninstallDisplayIcon={app}\{#AppExeName},0
+SetupIconFile=backend\build_assets\icons\app.ico
 OutputDir=dist\installer
 OutputBaseFilename=RoadmapsApp_Setup
 
@@ -59,6 +60,7 @@ WelcomeLabel2=Your accessible gateway to the financial markets.%n%nIt is recomme
 ; 7. Files to Install
 ; ---------------------------------------------------------
 Source: "dist\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "backend\build_assets\icons\app.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 ; ---------------------------------------------------------

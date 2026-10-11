@@ -5,12 +5,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent
 BACKEND_DIR = PROJECT_ROOT / 'backend'
 FRONTEND_DIR = PROJECT_ROOT / 'frontend'
 FRONTEND_DIST = FRONTEND_DIR / 'dist'
-APP_ICON = FRONTEND_DIR / 'public' / 'favicon.ico'
+APP_ICON_DIR = BACKEND_DIR / 'build_assets' / 'icons'
+APP_ICON = APP_ICON_DIR / 'app.ico'
 ENTRY_POINT = BACKEND_DIR / 'Main.py'
 VERSION_SEED = BACKEND_DIR / 'build_assets' / 'current_version.txt'
 SETTINGS_SEED = BACKEND_DIR / 'build_assets' / 'default_user_settings.json'
@@ -48,6 +48,10 @@ def main() -> None:
         if not seed.is_file():
             raise FileNotFoundError(f'Packaged seed file not found: {seed}')
 
+    frontend_icon_dir = FRONTEND_DIR / 'public' / 'icons'
+    frontend_icon_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(APP_ICON, frontend_icon_dir / 'app.ico')
+
     npm = shutil.which('npm.cmd' if sys.platform == 'win32' else 'npm')
     if npm is None:
         raise RuntimeError('npm was not found on PATH. Install Node.js and reopen the terminal.')
@@ -80,6 +84,8 @@ def main() -> None:
         f'{SETTINGS_SEED}{separator}backend/build_assets',
         '--add-data',
         f'{STRATEGIES_SEED}{separator}backend/build_assets',
+        '--add-data',
+        f'{APP_ICON}{separator}backend/build_assets/icons',
     ]
 
     for module in HIDDEN_IMPORTS:

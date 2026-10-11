@@ -43,5 +43,14 @@ Data & Config Files (JSON)
 !frontend/tsconfig.json
 !frontend/jsconfig.json
 !frontend/.eslintrc.json
+
+# Build and executable artifacts
+*.exe
+*.pkg
+*.msi
+*.app
+dist/
 build/
+__pycache__/
+*.pyc
 

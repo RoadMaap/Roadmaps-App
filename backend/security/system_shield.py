@@ -38,7 +38,11 @@ class SystemShield:
 
                 for command in candidate_commands:
                     try:
-                        output = subprocess.check_output(command, stderr=subprocess.DEVNULL)
+                        output = subprocess.check_output(
+                            command,
+                            stderr=subprocess.DEVNULL,
+                            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+                        )
                         text = output.decode("utf-8", errors="ignore")
                         lines = [line.strip() for line in text.splitlines() if line.strip()]
                         for line in lines:
@@ -59,7 +63,11 @@ class SystemShield:
                     pass
 
             elif platform.system() == "Darwin":
-                output = subprocess.check_output("ioreg -rd1 -c IOPlatformExpertDevice | grep IOPlatformUUID", shell=True).decode()
+                output = subprocess.check_output(
+                    "ioreg -rd1 -c IOPlatformExpertDevice | grep IOPlatformUUID",
+                    shell=True,
+                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+                ).decode()
                 return output.split('"')[3]
         except Exception:
             pass

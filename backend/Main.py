@@ -1,9 +1,50 @@
 import os
 import sys
+import subprocess
+import json
+import multiprocessing
+from pathlib import Path
+
+if hasattr(sys, '_MEIPASS'):
+    sys.stdout = open(os.devnull, 'w', encoding='utf-8')
+    sys.stderr = open(os.devnull, 'w', encoding='utf-8')
+
+
+def _run_native_file_dialog_worker(payload_json, result_path):
+    from tkinter import Tk, filedialog
+
+    payload = json.loads(payload_json)
+    filetypes = [tuple(filetype) for filetype in payload['filetypes']]
+    root = Tk()
+    root.withdraw()
+    root.wm_attributes('-topmost', 1)
+    try:
+        selected_path = filedialog.askopenfilename(
+            title=payload['title'],
+            filetypes=filetypes,
+        )
+    finally:
+        root.destroy()
+
+    Path(result_path).write_text(selected_path or '', encoding='utf-8')
+
+
+if __name__ == '__main__':
+    multiprocessing.freeze_support()
+    if len(sys.argv) > 1 and sys.argv[1] == '--worker-mode':
+        if len(sys.argv) != 5 or sys.argv[2] != 'native-file-dialog':
+            raise SystemExit(2)
+        try:
+            _run_native_file_dialog_worker(sys.argv[3], sys.argv[4])
+        except Exception:
+            raise SystemExit(1)
+        raise SystemExit(0)
+
 import socket
 import threading
 import time
 import eel
+import eel.edge as eel_edge
 from runtime_paths import resource_path
 
 # ==============================================================================
@@ -26,6 +67,29 @@ from security.desktop_auth import start_web_auth_flow
 # 3. GRACEFUL SHUTDOWN HANDLER
 # ==============================================================================
 _shutdown_initiated = False
+
+
+def _run_edge_without_console(path, options, start_urls):
+    if not isinstance(options['cmdline_args'], list):
+        raise TypeError("'cmdline_args' option must be of type List[str]")
+
+    if options['app_mode']:
+        command = f'start msedge --app={start_urls[0]} ' + ' '.join(options['cmdline_args'])
+    else:
+        command = 'start msedge --new-window ' + ' '.join(options['cmdline_args']) + f' {start_urls[0]}'
+
+    subprocess.Popen(
+        command,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        shell=True,
+        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+    )
+
+
+if os.name == 'nt':
+    eel_edge.run = _run_edge_without_console
 
 
 def _available_local_port(preferred_port):
@@ -89,6 +153,7 @@ if __name__ == '__main__':
     MY_PORT = _available_local_port(8989)
     START_PAGE = 'index.html' 
     APP_URL = f'http://localhost:{MY_PORT}/{START_PAGE}'
+    EEL_WINDOW_ICON = str(resource_path('backend', 'build_assets', 'icons', 'app.ico'))
     
     print(f"🚀 Starting RoadMap Enterprise Terminal at {APP_URL}")
     
@@ -116,7 +181,12 @@ if __name__ == '__main__':
         else:
             print("⚠️ No token received from auth flow.")
 
-    app_flags = ['--window-size=1200,850', '--disable-infobars', '--disable-extensions']
+    app_flags = [
+        '--window-size=1200,850',
+        '--disable-infobars',
+        '--disable-extensions',
+        f'--app-icon="{EEL_WINDOW_ICON}"',
+    ]
     
     try:
         # اجرای اولیه در حالت Edge/Chrome App Mode
@@ -124,6 +194,6 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"⚠️ Primary App Mode Failed: {e}. Attempting Fallback to default browser...")
         try:
-            eel.start(START_PAGE, mode='edge', port=MY_PORT, size=(1200, 850), close_callback=on_close)
+            eel.start(START_PAGE, mode='edge', port=MY_PORT, size=(1200, 850), close_callback=on_close, cmdline_args=app_flags)
         except Exception as ex:
             print(f"❌ Fatal Error: Could not launch UI. {ex}")
