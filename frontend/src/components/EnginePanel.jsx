@@ -1,8 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { memo, useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { useConfigActions, useMt5Path } from '../context/ConfigStateContext';
+import { useEngineLogActions, useEngineLogs, useEngineRunning } from '../context/EngineStateContext';
 
-const EnginePanel = ({ mt5Path, onPathChange, logs = [], isRunning, onToggle, onClearLogs }) => {
+const EnginePanel = ({ onToggle }) => {
     const { t } = useLanguage();
+    const mt5Path = useMt5Path();
+    const { setMt5Path } = useConfigActions();
+    const logs = useEngineLogs();
+    const isRunning = useEngineRunning();
+    const { clearLogs } = useEngineLogActions();
     const scrollViewportRef = useRef(null);
     const [isCopied, setIsCopied] = useState(false);
 
@@ -19,7 +26,7 @@ const EnginePanel = ({ mt5Path, onPathChange, logs = [], isRunning, onToggle, on
     const choosePath = async () => {
         if(window.eel) {
             const path = await window.eel.choose_mt5_path()();
-            if(path) onPathChange(path);
+            if(path) setMt5Path(path);
         }
     };
 
@@ -120,7 +127,7 @@ const EnginePanel = ({ mt5Path, onPathChange, logs = [], isRunning, onToggle, on
                         
                         {/* Clear Logs Button */}
                         <button 
-                            onClick={onClearLogs} 
+                            onClick={clearLogs}
                             disabled={!logs.length}
                             className="rounded-md bg-rose-500/20 p-1.5 text-rose-300 transition-all hover:bg-rose-500/30 hover:text-rose-200 disabled:cursor-not-allowed"
                             title="Clear Console"
@@ -155,4 +162,4 @@ const EnginePanel = ({ mt5Path, onPathChange, logs = [], isRunning, onToggle, on
     );
 };
 
-export default EnginePanel;
+export default memo(EnginePanel);

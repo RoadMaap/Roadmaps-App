@@ -1,17 +1,38 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
+import { useEngineLiveData } from '../../context/EngineStateContext';
 import EnginePanel from '../EnginePanel';
 import RiskPanel from '../riskpanel/RiskPanel';
 import Sparkline from '../Sparkline';
 
-const DashboardOverview = ({
-    initialData, nextNews, liveData, profitHistory, equityProgress,
-    mt5Path, onPathChange, logs, isRunning, onToggleEngine, onClearLogs,
-}) => {
+const DashboardOverview = ({ initialData, nextNews, onToggleEngine }) => {
     const { t, lang } = useLanguage();
+    const liveData = useEngineLiveData();
+    const [profitHistory, setProfitHistory] = useState(Array(15).fill(0));
+    const [initialEquity, setInitialEquity] = useState(null);
     const profit = liveData?.profit || 0;
     const equity = liveData?.equity || 0;
     const positions = liveData?.positions || 0;
+
+    useEffect(() => {
+        setProfitHistory((previous) => [...previous, profit].slice(-20));
+    }, [profit]);
+
+    useEffect(() => {
+        if (initialEquity === null && equity > 0) setInitialEquity(equity - profit);
+    }, [equity, initialEquity, profit]);
+
+    let equityProgress = { width: '0%', isProfit: true, percent: '0.0' };
+    if (initialEquity && initialEquity > 0 && equity > 0) {
+        if (equity >= initialEquity) {
+            const profitPercent = 100 - (initialEquity / equity) * 100;
+            equityProgress = { width: `${profitPercent}%`, isProfit: true, percent: profitPercent.toFixed(1) };
+        } else {
+            const remainingPercent = (equity / initialEquity) * 100;
+            const lossPercent = 100 - remainingPercent;
+            equityProgress = { width: `${remainingPercent}%`, isProfit: false, percent: lossPercent.toFixed(1) };
+        }
+    }
 
     return (
         <>
@@ -69,7 +90,7 @@ const DashboardOverview = ({
             <div className="grid min-h-[500px] grid-cols-1 gap-4 pb-4 lg:grid-cols-12">
                 <div className="min-h-[500px] lg:col-span-8"><RiskPanel initialData={initialData} nextNews={nextNews} /></div>
                 <div className="min-h-[500px] lg:col-span-4">
-                    <EnginePanel mt5Path={mt5Path} onPathChange={onPathChange} logs={logs} isRunning={isRunning} onToggle={onToggleEngine} onClearLogs={onClearLogs} />
+                    <EnginePanel onToggle={onToggleEngine} />
                 </div>
             </div>
         </>

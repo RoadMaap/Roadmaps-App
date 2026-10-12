@@ -37,9 +37,10 @@ const Login = ({ onLoginSuccess }) => {
                 const result = await window.eel.attempt_login()();
                 
                 if (result.success) {
+                    const plan = result.plan || result.profile?.plan || 'Basic';
                     setStatusMessage(lang === 'fa' ? "ورود موفق! در حال انتقال..." : "Login Successful! Redirecting...");
                     setTimeout(() => {
-                        onLoginSuccess();
+                        onLoginSuccess(plan);
                     }, 1000);
                 } else {
                     setErrorMsg(result.message || (lang === 'fa' ? "زمان ورود به پایان رسید یا خطا رخ داد." : "Login failed or timed out."));
@@ -54,7 +55,7 @@ const Login = ({ onLoginSuccess }) => {
             }
         } else {
             // برای تست در محیط مرورگر (بدون پایتون)
-            setTimeout(() => onLoginSuccess(), 1000);
+            setTimeout(() => onLoginSuccess('Basic'), 1000);
         }
     };
 

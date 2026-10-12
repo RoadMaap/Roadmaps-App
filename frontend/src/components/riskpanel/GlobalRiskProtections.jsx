@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import ToggleSwitch from './ToggleSwitch';
+import PremiumGuard from '../PremiumGuard';
 
 const activeCard = 'border-emerald-500/30 bg-emerald-500/5';
 const inactiveCard = 'border-[#2F2E35] bg-[#141318]';
@@ -29,6 +30,7 @@ const GlobalRiskProtections = ({
             </header>
 
             <div className="space-y-3 rounded-md border border-[#2F2E35] bg-[#141318] p-3 sm:p-4">
+                <PremiumGuard requiredPlan="Pro" className="block">
                 <article className={`rounded-md border p-3 transition-colors ${beEnabled ? activeCard : inactiveCard}`}>
                     <div className="mb-3 flex items-center gap-3">
                         <ToggleSwitch checked={beEnabled} onChange={(event) => setBeEnabled(event.target.checked)} label={t('auto_breakeven')} />
@@ -42,7 +44,9 @@ const GlobalRiskProtections = ({
                         </div>
                     </div>
                 </article>
+                </PremiumGuard>
 
+                <PremiumGuard requiredPlan="Pro" className="block">
                 <article className={`rounded-md border p-3 transition-colors ${pcEnabled ? activeCard : inactiveCard}`}>
                     <div className="mb-3 flex items-center gap-3">
                         <ToggleSwitch checked={pcEnabled} onChange={(event) => setPcEnabled(event.target.checked)} label={t('partial_close')} />
@@ -61,7 +65,9 @@ const GlobalRiskProtections = ({
                         </label>
                     </div>
                 </article>
+                </PremiumGuard>
 
+                <PremiumGuard requiredPlan="Pro" className="block">
                 <article className={`rounded-md border p-3 transition-colors ${tlEnabled ? activeCard : inactiveCard}`}>
                     <div className="mb-3 flex items-center gap-3">
                         <ToggleSwitch checked={tlEnabled} onChange={(event) => setTlEnabled(event.target.checked)} label={t('target_lock')} />
@@ -75,6 +81,7 @@ const GlobalRiskProtections = ({
                         </div>
                     </div>
                 </article>
+                </PremiumGuard>
             </div>
         </section>
     );

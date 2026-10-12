@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import PremiumGuard from './PremiumGuard';
 
 // کارت تنظیمات تکی برای هر استراتژی
 const StrategyConfigCard = ({ name, config, onSave }) => {
@@ -76,6 +77,12 @@ const StrategyConfigCard = ({ name, config, onSave }) => {
                             <label className="text-[9px] text-zinc-500 uppercase font-bold">{t('magic_number')}</label>
                             <input type="number" name="magic_number" value={localConfig.magic_number} onChange={handleChange} className="w-full h-8 bg-zinc-900 border border-white/10 rounded px-2 text-xs text-blue-400 font-mono" />
                         </div>
+                        <PremiumGuard requiredPlan="Pro" className="block">
+                            <div className="space-y-1">
+                                <label className="text-[9px] text-zinc-500 uppercase font-bold">{t('custom_leverage')}</label>
+                                <input type="number" min="1" name="leverage" value={localConfig.leverage ?? ''} onChange={handleChange} placeholder={t('leverage_auto')} className="h-8 w-full rounded border border-white/10 bg-zinc-900 px-2 text-xs font-mono text-amber-200" />
+                            </div>
+                        </PremiumGuard>
                         <div className="space-y-1">
                             <label className="text-[9px] text-zinc-500 uppercase font-bold">{t('candle_type')}</label>
                             <select name="candle_type" value={localConfig.candle_type} onChange={handleChange} className="w-full h-8 bg-zinc-900 border border-white/10 rounded px-2 text-xs text-zinc-300">

@@ -16,12 +16,15 @@ import storage.json_manager as jm
 from core.trading_engine import LiveTrader
 from trading.config_builder import create_symbol_config 
 from core.error_handler import ErrorManager, ui_log
+from core.mt5_runtime import mt5_call
 from trading.risk_manager import (FixedRiskAmountRule, FixedLotRule, PercentRiskRule, BreakevenHandler, PartialCloseRule)
 
 # --- 2. ENGINE STATES ---
 robot_running = False
 trade_thread = None
 live_trader_instance = None
+engine_state_lock = threading.RLock()
+configuration_refresh_event = threading.Event()
 
 def sanitize_days_list(raw_val):
     try:
@@ -53,11 +56,9 @@ def validate_string(val, field_name):
     return clean_val
 
 
-# --- 3. MAIN MARKET LOOP ---
-def run_trading_engine():
-    global live_trader_instance, robot_running
-    
-    user_settings = jm.load_settings()
+def build_live_config():
+    source = jm.get_live_configuration_source()
+    user_settings = source['settings']
     mt5_path = user_settings.get("mt5_path")
     
     # --- 🛡️ Global Settings Validation Layer ---
@@ -85,15 +86,12 @@ def run_trading_engine():
         nf_after = validate_number(user_settings.get('nf_after', 30), int, 'News Filter (Mins After)')
 
     except ValueError as ve:
-        # Catch empty fields and display error safely on the UI
-        ui_log('error', str(ve))
-        robot_running = False
-        return
+        raise ValueError(str(ve)) from ve
 
     strategy_instances_config = []
     tf_map = { "M1": 1, "M5": 5, "M15": 15, "M30": 30, "H1": 16385, "H4": 16388, "D1": 16408 }
 
-    for name, data in jm.strategies_store.items():
+    for name, data in source['strategies'].items():
         try:
             cls, params, cfg = data["class"], data["params"], data["config"]
             strat_mm_rules = []
@@ -113,10 +111,6 @@ def run_trading_engine():
             if global_pc_enabled: strat_mm_rules.append(PartialCloseRule(global_pc_trigger, global_pc_vol/100.0))
 
             clean_days = sanitize_days_list(cfg.get('allowed_days', [0, 1, 2, 3, 4]))
-            for k in list(params.keys()):
-                if k.lower() == 'allowed_days':
-                    clean_days = sanitize_days_list(params[k])
-                    break
             
             cfg['allowed_days'] = params['allowed_days'] = params['ALLOWED_DAYS'] = params['Allowed_Days'] = clean_days
             kz = cfg.get("killzones", [])
@@ -144,18 +138,11 @@ def run_trading_engine():
         except ValueError as ve:
             # Trap empty risk/symbol fields gracefully
             if "Configuration Error:" in str(ve):
-                ui_log('error', str(ve))
-                robot_running = False
-                return
+                raise ValueError(str(ve)) from ve
             else:
                 ErrorManager.catch_strategy_error(name, "Initialization", ve)
         except Exception as e: 
             ErrorManager.catch_strategy_error(name, "Initialization", e)
-
-    if not strategy_instances_config:
-        eel.update_status('error', 'No valid configurations constructed. Engine halted.')
-        robot_running = False
-        return
 
     margin_limit_pct = (margin_limit / 100.0) if margin_enabled else 1.0 
 
@@ -167,6 +154,31 @@ def run_trading_engine():
         "nf_after": nf_after, "strategy_instances": strategy_instances_config 
     }
     
+    return LIVE_CONFIG
+
+
+def request_configuration_refresh():
+    configuration_refresh_event.set()
+    return True
+
+
+# --- 3. MAIN MARKET LOOP ---
+def run_trading_engine():
+    global live_trader_instance, robot_running
+
+    try:
+        LIVE_CONFIG = build_live_config()
+    except ValueError as error:
+        ui_log('error', str(error))
+        robot_running = False
+        return
+
+    if not LIVE_CONFIG['strategy_instances']:
+        ui_log('error', 'No valid configurations constructed. Engine halted.')
+        robot_running = False
+        return
+
+    mt5_path = LIVE_CONFIG.get('MT5_PATH')
     try:
         eel.update_status('warning', 'Initializing MT5 Connection Protocol...')
         if mt5_path and not os.path.exists(mt5_path):
@@ -175,21 +187,34 @@ def run_trading_engine():
             return
             
         live_trader_instance = LiveTrader(LIVE_CONFIG)
-        eel.update_status('success', f'Engine Active with {len(strategy_instances_config)} Strategies.')
+        eel.update_status('success', f"Engine Active with {len(LIVE_CONFIG['strategy_instances'])} Strategies.")
         
         while robot_running:
+            if configuration_refresh_event.is_set():
+                configuration_refresh_event.clear()
+                try:
+                    refreshed_config = build_live_config()
+                    if live_trader_instance.refresh_configuration(refreshed_config):
+                        ui_log('success', 'Live trading configuration refreshed.')
+                    else:
+                        configuration_refresh_event.set()
+                        ui_log('warning', 'Live config refresh deferred because the broker position query failed.')
+                except ValueError as error:
+                    ui_log('error', f'Configuration refresh rejected; previous configuration remains active: {error}')
+
             if live_trader_instance.target_lock.check_and_lock(live_trader_instance.mt5_interface):
                 ui_log('success', '🎯 Target Equity Hit! Positions secured and engine halted.')
                 robot_running = False
                 break
             
             live_trader_instance.position_manager.manage_positions()
+            live_trader_instance.prune_retired_strategies()
             live_trader_instance.signal_engine.process_entries()
             
-            if mt5.terminal_info():
-                acc = mt5.account_info()
+            if mt5_call(mt5.terminal_info):
+                acc = mt5_call(mt5.account_info)
                 if acc:
-                    pos_count = mt5.positions_total()
+                    pos_count = mt5_call(mt5.positions_total)
                     eel.update_dashboard(round(acc.profit, 2), round(acc.equity, 2), pos_count)
             time.sleep(1)
             
@@ -202,22 +227,37 @@ def run_trading_engine():
         except: pass
         eel.update_status('error', f'Fatal Error: {str(e)} | Location: {crash_location}')
     finally:
-        robot_running = False
+        with engine_state_lock:
+            robot_running = False
+        if live_trader_instance is not None:
+            live_trader_instance.mt5_interface.tasks.shutdown(wait=True)
 
 # --- 4. ENGINE COMMANDS ---
 def start_robot():
     global robot_running, trade_thread
-    if robot_running: return
-    if not jm.strategies_store:
-        eel.update_status('error', 'No strategies loaded. Engine halted.')
-        return
-    ui_log('success', "▶️ Starting Engine with All Strategies...")
-    robot_running = True
-    trade_thread = threading.Thread(target=run_trading_engine, daemon=True)
-    trade_thread.start()
+    with engine_state_lock:
+        if robot_running:
+            return
+        if trade_thread is not None and trade_thread.is_alive():
+            eel.update_status('warning', 'Engine is still shutting down. Please wait before restarting.')
+            return
+        if not jm.strategies_store:
+            eel.update_status('error', 'No strategies loaded. Engine halted.')
+            return
+        configuration_refresh_event.clear()
+        ui_log('success', "▶️ Starting Engine with All Strategies...")
+        robot_running = True
+        trade_thread = threading.Thread(target=run_trading_engine, daemon=True)
+        trade_thread.start()
 
-def stop_robot():
+def stop_robot(wait=False, timeout=30.0):
     global robot_running
     ui_log('warning', "⏹️ Stopping Engine...")
-    robot_running = False
+    with engine_state_lock:
+        robot_running = False
     eel.update_status('warning', 'Halting Engine...')
+    current_thread = threading.current_thread()
+    if wait and trade_thread is not None and trade_thread is not current_thread:
+        trade_thread.join(timeout=timeout)
+        if trade_thread.is_alive():
+            raise TimeoutError('Trading engine did not finish its active broker tasks before shutdown.')

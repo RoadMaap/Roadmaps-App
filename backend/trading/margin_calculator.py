@@ -1,4 +1,5 @@
 import MetaTrader5 as mt5
+from core.mt5_runtime import mt5_call
 
 class MarginManager:
     """
@@ -18,12 +19,16 @@ class MarginManager:
         """Updates the maximum allowed margin based on the current account balance."""
         self.max_allowed_margin = balance * self.margin_limit_pct
 
+    def update_configuration(self, config: dict):
+        self.margin_limit_pct = config.get('margin_limit_pct', self.margin_limit_pct)
+        self.max_allowed_margin = 0.0
+
     def calculate_margin(self, symbol: str, lot: float, price: float, contract_size: float = None, custom_leverage=None) -> float:
         """Calculates exact margin, factoring in user's custom strategy leverage if provided."""
         if price <= 0 or lot <= 0: 
             return 0.0
         
-        margin = mt5.order_calc_margin(mt5.ORDER_TYPE_BUY, symbol, lot, price)
+        margin = mt5_call(mt5.order_calc_margin, mt5.ORDER_TYPE_BUY, symbol, lot, price)
         
         if margin is None:
             if contract_size:

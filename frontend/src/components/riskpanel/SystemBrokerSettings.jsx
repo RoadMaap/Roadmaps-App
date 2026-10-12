@@ -2,6 +2,7 @@ import React from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import InfoTooltip from './InfoTooltip';
 import ToggleSwitch from './ToggleSwitch';
+import PremiumGuard from '../PremiumGuard';
 
 const activeCard = 'border-emerald-500/30 bg-emerald-500/5';
 const inactiveCard = 'border-[#2F2E35] bg-[#141318]';
@@ -48,6 +49,7 @@ const SystemBrokerSettings = ({
                     </div>
                 </article>
 
+                <PremiumGuard requiredPlan="Pro" className="block">
                 <article className={`rounded-md border p-3 transition-colors ${wuEnabled ? activeCard : inactiveCard}`}>
                     <div className="mb-3 flex items-center gap-3">
                         <ToggleSwitch checked={wuEnabled} onChange={(event) => setWuEnabled(event.target.checked)} label={t('warmup_system')} />
@@ -64,6 +66,9 @@ const SystemBrokerSettings = ({
                     </div>
                 </article>
 
+                </PremiumGuard>
+
+                <PremiumGuard requiredPlan="Pro" className="block">
                 <article className={`rounded-md border p-3 transition-colors ${nfEnabled ? activeCard : inactiveCard}`}>
                     <div className="mb-3 flex items-center gap-3">
                         <ToggleSwitch checked={nfEnabled} onChange={handleNewsToggle} label={t('news_filter')} />
@@ -107,6 +112,7 @@ const SystemBrokerSettings = ({
                         )}
                     </div>
                 </article>
+                </PremiumGuard>
             </div>
         </section>
     );

@@ -112,6 +112,7 @@ def on_close(page, sockets):
     _shutdown_initiated = True
 
     def _shutdown_if_no_sockets():
+        global _shutdown_initiated
         time.sleep(2.0)
 
         if len(getattr(eel, '_websockets', [])) == 0:
@@ -119,16 +120,18 @@ def on_close(page, sockets):
             try:
                 import core.engine_controller as engine_controller
                 if hasattr(engine_controller, 'stop_robot'):
-                    engine_controller.stop_robot()
+                    engine_controller.stop_robot(wait=True, timeout=30.0)
                     print("🛑 Engine stop command sent to controller.")
             except Exception as exc:
                 print(f"⚠️ Shutdown engine stop warning: {exc}")
-
-            time.sleep(1.0)
+                print("⚠️ Keeping the application process and MT5 connection alive for broker-task safety.")
+                _shutdown_initiated = False
+                return
 
             try:
                 import MetaTrader5 as mt5
-                mt5.shutdown()
+                from core.mt5_runtime import mt5_call
+                mt5_call(mt5.shutdown)
                 print("🔌 MT5 Connection Safely Disconnected.")
             except Exception:
                 pass

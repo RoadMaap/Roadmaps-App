@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { useConfigActions, useStrategies } from '../context/ConfigStateContext';
+import PremiumGuard from './PremiumGuard';
 
 const CustomSelect = ({ label, value, options, onChange, prefixIcon }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -60,12 +62,16 @@ const CustomSelect = ({ label, value, options, onChange, prefixIcon }) => {
     );
 };
 
-const StrategyPanel = ({ strategies, onStrategiesChange, onUpdateConfig }) => {
+const StrategyPanel = ({ onUpdateConfig }) => {
     const { t, lang } = useLanguage();
+    const strategies = useStrategies();
+    const { setStrategies } = useConfigActions();
     const [isLoading, setIsLoading] = useState(false);
     const [expandedStrategies, setExpandedStrategies] = useState([]);
     const [strategyToDelete, setStrategyToDelete] = useState(null);
     const [isDeletingStrategy, setIsDeletingStrategy] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+    const toastTimeoutRef = useRef(null);
 
     const daysOfWeek = [0, 1, 2, 3, 4, 5, 6];
     const dayLabels = [t('day_mon'), t('day_tue'), t('day_wed'), t('day_thu'), t('day_fri'), t('day_sat'), t('day_sun')];
@@ -82,6 +88,14 @@ const StrategyPanel = ({ strategies, onStrategiesChange, onUpdateConfig }) => {
         'allow_day', 'kill_zone_list'
     ];
 
+    const showToast = (message) => {
+        setToastMessage(message);
+        window.clearTimeout(toastTimeoutRef.current);
+        toastTimeoutRef.current = window.setTimeout(() => setToastMessage(''), 4500);
+    };
+
+    useEffect(() => () => window.clearTimeout(toastTimeoutRef.current), []);
+
     const toggleExpand = (name) => {
         setExpandedStrategies(prev => 
             (prev || []).includes(name) ? prev.filter(n => n !== name) : [...(prev || []), name]
@@ -90,13 +104,18 @@ const StrategyPanel = ({ strategies, onStrategiesChange, onUpdateConfig }) => {
 
     const handleImport = async () => {
         setIsLoading(true);
+        setToastMessage('');
         if(window.eel) {
             try {
                 const path = await window.eel.open_strategy_file_dialog()();
                 if (path) {
                     const res = await window.eel.load_custom_strategy(path)();
                     if (res?.success && res?.strategies) {
-                        onStrategiesChange(res.strategies);
+                        setStrategies(res.strategies);
+                    } else if (res?.message === 'BASIC_LIMIT_STRATEGIES') {
+                        showToast(t('basic_limit_strategies'));
+                    } else if (res?.message) {
+                        showToast(res.message);
                     }
                 }
             } catch (err) {
@@ -117,7 +136,7 @@ const StrategyPanel = ({ strategies, onStrategiesChange, onUpdateConfig }) => {
         if(window.eel) {
             try {
                 const newStrategies = await window.eel.remove_strategy(strategyToDelete)();
-                if (newStrategies) onStrategiesChange(newStrategies);
+                if (newStrategies) setStrategies(newStrategies);
             } catch (err) {
                 console.error("Delete Error:", err);
                 setIsDeletingStrategy(false);
@@ -136,7 +155,7 @@ const StrategyPanel = ({ strategies, onStrategiesChange, onUpdateConfig }) => {
     };
 
     const handleParamChange = (strategyName, paramKey, newValue) => {
-        onStrategiesChange(prevStrategies => ({
+        setStrategies(prevStrategies => ({
             ...prevStrategies,
             [strategyName]: {
                 ...(prevStrategies?.[strategyName] || {}),
@@ -168,7 +187,7 @@ const StrategyPanel = ({ strategies, onStrategiesChange, onUpdateConfig }) => {
         }
 
         // Update local state with the corrected validated value
-        onStrategiesChange(prevStrategies => ({
+        setStrategies(prevStrategies => ({
             ...prevStrategies,
             [strategyName]: {
                 ...(prevStrategies?.[strategyName] || {}),
@@ -188,7 +207,7 @@ const StrategyPanel = ({ strategies, onStrategiesChange, onUpdateConfig }) => {
 
     // 1. Local State Update (For Fast Typing - No Backend Call)
     const handleConfigChangeLocal = (strategyName, configKey, value) => {
-        onStrategiesChange(prevStrategies => ({
+        setStrategies(prevStrategies => ({
             ...prevStrategies,
             [strategyName]: {
                 ...(prevStrategies?.[strategyName] || {}),
@@ -338,6 +357,7 @@ const StrategyPanel = ({ strategies, onStrategiesChange, onUpdateConfig }) => {
                     {t('import_strategy')}
                 </button>
             </div>
+            {toastMessage && <div role="status" className="fixed inset-x-4 top-20 z-[100] mx-auto max-w-lg rounded-lg border border-amber-300/20 bg-[#201d16]/95 px-4 py-3 text-center text-xs font-semibold text-amber-100 shadow-2xl backdrop-blur-md">{toastMessage}</div>}
 
             <div className="min-w-0 flex-1 overflow-y-scroll pr-2 custom-scroll space-y-4 pb-4">
                 {strategyList.length === 0 ? (
@@ -453,6 +473,7 @@ const StrategyPanel = ({ strategies, onStrategiesChange, onUpdateConfig }) => {
                                                     </div>
                                                     
                                                     {/* LEVERAGE FIELD */}
+                                                    <PremiumGuard requiredPlan="Pro" className="block">
                                                     <div>
                                                         <label className="text-[9px] text-zinc-500 font-bold mb-1.5 block">{t('strategy_leverage')?.toUpperCase()}</label>
                                                         <input 
@@ -465,6 +486,7 @@ const StrategyPanel = ({ strategies, onStrategiesChange, onUpdateConfig }) => {
                                                             className="w-full bg-[#18181b] border border-white/5 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-indigo-400 font-mono transition-all outline-none hover:border-white/10 placeholder-zinc-700" 
                                                         />
                                                     </div>
+                                                    </PremiumGuard>
 
                                                     <CustomSelect 
                                                         label={t('timeframe_label') || "TIMEFRAME"}

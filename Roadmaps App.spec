@@ -1,13 +1,26 @@
 # -*- mode: python ; coding: utf-8 -*-
+from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files
 
-datas = [('C:\\Users\\alire\\OneDrive\\Desktop\\RoadMaps\\Roadmaps App\\frontend\\dist', 'frontend/dist'), ('C:\\Users\\alire\\OneDrive\\Desktop\\RoadMaps\\Roadmaps App\\backend\\build_assets\\current_version.txt', 'backend/build_assets'), ('C:\\Users\\alire\\OneDrive\\Desktop\\RoadMaps\\Roadmaps App\\backend\\build_assets\\default_user_settings.json', 'backend/build_assets'), ('C:\\Users\\alire\\OneDrive\\Desktop\\RoadMaps\\Roadmaps App\\backend\\build_assets\\active_strategies.json', 'backend/build_assets'), ('C:\\Users\\alire\\OneDrive\\Desktop\\RoadMaps\\Roadmaps App\\backend\\build_assets\\icons\\app.ico', 'backend/build_assets/icons')]
+PROJECT_ROOT = Path(SPECPATH).resolve()
+BACKEND_DIR = PROJECT_ROOT / 'backend'
+FRONTEND_DIST = PROJECT_ROOT / 'frontend' / 'dist'
+BUILD_ASSETS = BACKEND_DIR / 'build_assets'
+APP_ICON = BUILD_ASSETS / 'icons' / 'app.ico'
+
+datas = [
+    (str(FRONTEND_DIST), 'frontend/dist'),
+    (str(BUILD_ASSETS / 'current_version.txt'), 'backend/build_assets'),
+    (str(BUILD_ASSETS / 'default_user_settings.json'), 'backend/build_assets'),
+    (str(BUILD_ASSETS / 'active_strategies.json'), 'backend/build_assets'),
+    (str(APP_ICON), 'backend/build_assets/icons'),
+]
 datas += collect_data_files('certifi')
 
 
 a = Analysis(
-    ['C:\\Users\\alire\\OneDrive\\Desktop\\RoadMaps\\Roadmaps App\\backend\\Main.py'],
-    pathex=['C:\\Users\\alire\\OneDrive\\Desktop\\RoadMaps\\Roadmaps App\\backend'],
+    [str(BACKEND_DIR / 'Main.py')],
+    pathex=[str(BACKEND_DIR)],
     binaries=[],
     datas=datas,
     hiddenimports=['MetaTrader5', 'eel', 'pandas', 'numpy', 'pandas_ta', 'PIL', 'requests', 'certifi', 'dotenv', 'urllib3', 'gevent', 'bottle', 'bottle_websocket', 'geventwebsocket'],
@@ -39,5 +52,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['C:\\Users\\alire\\OneDrive\\Desktop\\RoadMaps\\Roadmaps App\\backend\\build_assets\\icons\\app.ico'],
+    icon=[str(APP_ICON)],
 )

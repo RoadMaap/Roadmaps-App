@@ -267,7 +267,7 @@ class AppUpdater:
         except Exception as exc:
             raise RuntimeError(f'Could not load the trading engine for shutdown: {exc}') from exc
 
-        engine_controller.stop_robot()
+        engine_controller.stop_robot(wait=True, timeout=30.0)
         trade_thread = getattr(engine_controller, 'trade_thread', None)
         if trade_thread is not None and trade_thread.is_alive():
             trade_thread.join(timeout=10.0)
@@ -276,7 +276,8 @@ class AppUpdater:
 
         try:
             import MetaTrader5 as mt5
-            mt5.shutdown()
+            from core.mt5_runtime import mt5_call
+            mt5_call(mt5.shutdown)
         except Exception:
             pass
 

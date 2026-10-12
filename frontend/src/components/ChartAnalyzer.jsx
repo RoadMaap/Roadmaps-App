@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 
 // -----------------------------------------------------------------------------
 // CUSTOM SELECT COMPONENT
@@ -57,6 +58,8 @@ const CustomSelect = ({ value, options, onChange }) => {
 // -----------------------------------------------------------------------------
 const ChartAnalyzer = () => {
     const { t, lang } = useLanguage();
+    const { hasAccess } = useAuth();
+    const isLocked = !hasAccess('Pro');
     
     // Core States
     const [imagePreview, setImagePreview] = useState(null);
@@ -219,6 +222,8 @@ const ChartAnalyzer = () => {
     const isTradeable = result && result.trade_bias !== 'NEUTRAL' && result.trade_bias !== 'WAIT' && !(result.market_state?.includes('ERROR')) && symbol.trim().length > 0;
 
     return (
+        <div className="relative h-full w-full overflow-hidden">
+        <div className={`h-full w-full ${isLocked ? 'pointer-events-none select-none opacity-30' : ''}`} aria-hidden={isLocked} inert={isLocked}>
         <div className="relative flex h-full w-full flex-col overflow-y-auto bg-transparent p-6 font-sans text-zinc-300 custom-scroll" dir={lang === 'fa' ? 'rtl' : 'ltr'}>
             
             {/* Toast Notification Modal */}
@@ -554,6 +559,18 @@ const ChartAnalyzer = () => {
                     )}
                 </div>
             </div>
+        </div>
+        </div>
+        {isLocked && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#101114]/15" aria-hidden="true">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/30 bg-black/15 text-amber-100 shadow-[0_0_35px_rgba(251,191,36,0.13)]">
+                    <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <rect x="4" y="10" width="16" height="11" rx="2" strokeWidth="1.7" />
+                        <path strokeLinecap="round" strokeWidth="1.7" d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2" />
+                    </svg>
+                </span>
+            </div>
+        )}
         </div>
     );
 };

@@ -2,6 +2,8 @@ import json
 import os
 import sys
 import copy
+import threading
+from functools import wraps
 from pathlib import Path
 from runtime_paths import copy_seed_if_missing, resource_path, writable_backend_dir
 
@@ -50,12 +52,23 @@ STRATEGIES_FILE = os.path.join(STORAGE_DIR, 'active_strategies.json')
 
 # --- 3. GLOBAL STORE ---
 strategies_store = {}
+STORE_LOCK = threading.RLock()
+
+
+def synchronized_store(function):
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        with STORE_LOCK:
+            return function(*args, **kwargs)
+
+    return wrapped
 
 def _default_settings():
     """برمی‌گرداندن یک کپی مستقل و تمیز از تنظیمات پیش‌فرض"""
     return copy.deepcopy(GLOBAL_SETTINGS_DEFAULTS)
 
 # --- 4. STORAGE METHODS ---
+@synchronized_store
 def _ensure_storage_files():
     if not os.path.exists(STORAGE_DIR):
         os.makedirs(STORAGE_DIR, exist_ok=True)
@@ -72,6 +85,7 @@ def _ensure_storage_files():
             with open(STRATEGIES_FILE, 'w', encoding='utf-8') as f:
                 json.dump({}, f, indent=4)
 
+@synchronized_store
 def load_settings():
     if not os.path.exists(SETTINGS_FILE):
         save_settings_to_file(GLOBAL_SETTINGS_DEFAULTS)
@@ -92,6 +106,7 @@ def load_settings():
         pass
     return _default_settings()
 
+@synchronized_store
 def save_settings_to_file(data):
     _ensure_storage_files()
     payload = _default_settings()
@@ -114,6 +129,7 @@ def save_settings_to_file(data):
         json.dump(payload, f, indent=2)
     return {'success': True, 'path': SETTINGS_FILE}
 
+@synchronized_store
 def _write_active_strategies():
     """ذخیره تنظیمات استراتژی‌ها در دیسک، بدون ذخیره کردن آبجکت کلاس‌ها"""
     _ensure_storage_files()
@@ -132,6 +148,7 @@ def _write_active_strategies():
     except Exception as e:
         ui_log('error', f"❌ Error Saving Strategies: {e}")
 
+@synchronized_store
 def load_saved_strategies_disk():
     global strategies_store
     _ensure_storage_files()
@@ -163,6 +180,7 @@ def load_saved_strategies_disk():
     except Exception as e:
         ui_log('error', f"❌ Error Loading Strategies JSON: {e}")
 
+@synchronized_store
 def get_strategies_for_frontend():
     """ایجاد دیتای ایمن و بدون کلاس برای ارسال به رابط کاربری ریکت"""
     frontend_payload = {}
@@ -173,7 +191,23 @@ def get_strategies_for_frontend():
         }
     return frontend_payload
 
-def load_custom_strategy(file_path):
+@synchronized_store
+def get_live_configuration_source():
+    return {
+        'settings': load_settings(),
+        'strategies': {
+            name: {
+                'class': item['class'],
+                'params': copy.deepcopy(item.get('params', {})),
+                'config': copy.deepcopy(item.get('config', {})),
+            }
+            for name, item in strategies_store.items()
+        },
+    }
+
+
+@synchronized_store
+def load_custom_strategy(file_path, max_strategies=None):
     global strategies_store
     if not file_path or not os.path.exists(file_path):
         return {'success': False, 'message': 'Strategy file not found.'}
@@ -182,6 +216,9 @@ def load_custom_strategy(file_path):
     try:
         ui_log('warning', f"🔄 Loading Python file: {file_path}")
         strategy_classes = loader.load_strategies_from_file(file_path)
+        new_strategy_count = sum(name not in strategies_store for name in strategy_classes)
+        if max_strategies is not None and len(strategies_store) + new_strategy_count > max_strategies:
+            return {'success': False, 'message': 'BASIC_LIMIT_STRATEGIES'}
         discovered_params = loader.extract_params_for_classes(file_path)
         
         newly_added = []
@@ -208,6 +245,7 @@ def load_custom_strategy(file_path):
         ErrorManager.catch_strategy_error("Loader", "load_custom_strategy", e)
         return {'success': False, 'message': str(e)}
 
+@synchronized_store
 def remove_strategy(strategy_name):
     global strategies_store
     if strategy_name in strategies_store:
@@ -216,12 +254,14 @@ def remove_strategy(strategy_name):
         _write_active_strategies()
     return get_strategies_for_frontend()
 
+@synchronized_store
 def update_strategy_config(strategy_name, config_type, new_data):
     if strategy_name in strategies_store:
         strategies_store[strategy_name][config_type].update(new_data)
         _write_active_strategies()
     return True
 
+@synchronized_store
 def update_strategy_param(strategy_name, param_key, new_value):
     if strategy_name in strategies_store:
         strategies_store[strategy_name]['params'][param_key] = new_value
@@ -229,6 +269,7 @@ def update_strategy_param(strategy_name, param_key, new_value):
         return True
     return False
 
+@synchronized_store
 def clear_active_strategy():
     global strategies_store
     strategies_store = {}

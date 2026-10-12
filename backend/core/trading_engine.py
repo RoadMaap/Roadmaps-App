@@ -8,6 +8,7 @@ import sys
 import math
 import traceback
 import time as os_time
+import threading
 from datetime import datetime, timedelta
 import pandas as pd
 import MetaTrader5 as mt5
@@ -21,6 +22,7 @@ try:
     from trading.margin_calculator import MarginManager
     from core.target_lock import TargetLockManager
     from core.error_handler import ErrorManager, ui_log
+    from core.mt5_runtime import MT5TaskExecutor, mt5_call, serialized_mt5
 except ImportError as e:
     print(f"❌ Critical Core Engine Import Error: {e}")
     sys.exit(1)
@@ -70,16 +72,33 @@ def is_news_embargo_active(symbol, config, news_filter):
 class MT5Interface:
     def __init__(self, mt5_path=None, max_retries=15, retry_delay_seconds=5):
         self.mt5_path = mt5_path
+        self.tasks = MT5TaskExecutor()
         self._connect_with_retry(max_retries, retry_delay_seconds)
+
+    def submit_background(self, operation_key, operation):
+        future = self.tasks.submit(operation_key, operation)
+        if future is None:
+            return False
+
+        def report_failure(completed):
+            try:
+                error = completed.exception()
+            except Exception as exc:
+                error = exc
+            if error:
+                ui_log('error', f"Background MT5 task {operation_key} failed: {error}")
+
+        future.add_done_callback(report_failure)
+        return True
 
     def _connect_with_retry(self, max_retries, retry_delay):
         ui_log('warning', "🔌 [SYSTEM] Initiating MT5 Terminal Connection Protocol...")
         for attempt in range(1, max_retries + 1):
-            init_success = mt5.initialize(path=self.mt5_path) if self.mt5_path else mt5.initialize()
+            init_success = mt5_call(mt5.initialize, path=self.mt5_path) if self.mt5_path else mt5_call(mt5.initialize)
             if init_success:
-                term = mt5.terminal_info()
+                term = mt5_call(mt5.terminal_info)
                 if term is not None and term.connected:
-                    acc = mt5.account_info()
+                    acc = mt5_call(mt5.account_info)
                     if acc is not None:
                         ui_log('success', f"✅ [SUCCESS] MT5 Connected & Synced! Account: {acc.login}")
                         return 
@@ -87,12 +106,16 @@ class MT5Interface:
                 os_time.sleep(retry_delay)
         raise ConnectionError("🛑 [FATAL] Could not establish stable MT5 connection.")
 
+    @serialized_mt5
     def is_connected(self):
-        term = mt5.terminal_info()
+        term = mt5_call(mt5.terminal_info)
         return term is not None and term.connected
 
-    def get_account_info(self): return mt5.account_info()
-    def get_symbol_info(self, symbol): return mt5.symbol_info(symbol)
+    @serialized_mt5
+    def get_account_info(self): return mt5_call(mt5.account_info)
+
+    @serialized_mt5
+    def get_symbol_info(self, symbol): return mt5_call(mt5.symbol_info, symbol)
     
     def get_real_contract_size(self, symbol):
         info = self.get_symbol_info(symbol)
@@ -120,8 +143,9 @@ class MT5Interface:
         vol = round(volume / info.volume_step + 1e-9) * info.volume_step
         return min(max(round(vol, 2), info.volume_min), info.volume_max)
 
+    @serialized_mt5
     def get_candles(self, symbol, timeframe, count):
-        rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, count)
+        rates = mt5_call(mt5.copy_rates_from_pos, symbol, timeframe, 0, count)
         if rates is None or len(rates) == 0: return None
         df = pd.DataFrame(rates)
         df['time'] = pd.to_datetime(df['time'], unit='s')
@@ -131,9 +155,14 @@ class MT5Interface:
         if 'volume' not in df.columns: df['volume'] = 0
         return df
 
-    def get_symbol_tick(self, symbol): return mt5.symbol_info_tick(symbol)
-    def get_open_positions(self, symbol=None): return mt5.positions_get(symbol=symbol) if symbol else mt5.positions_get()
+    @serialized_mt5
+    def get_symbol_tick(self, symbol): return mt5_call(mt5.symbol_info_tick, symbol)
 
+    @serialized_mt5
+    def get_open_positions(self, symbol=None):
+        return mt5_call(mt5.positions_get, symbol=symbol) if symbol else mt5_call(mt5.positions_get)
+
+    @serialized_mt5
     def get_smart_filling_mode(self, symbol):
         """
         جلوگیری از ارور 10030: استفاده از پرچم‌های باینری برای کشف Filling Mode مجاز بروکر
@@ -146,6 +175,7 @@ class MT5Interface:
         elif flags & 2: return mt5.ORDER_FILLING_IOC # IOC Allowed
         else: return mt5.ORDER_FILLING_RETURN
 
+    @serialized_mt5
     def send_market_order(self, symbol, trade_type, volume, sl, tp, magic, comment):
         tick = self.get_symbol_tick(symbol)
         if not tick: return False
@@ -165,25 +195,27 @@ class MT5Interface:
             "type_time": mt5.ORDER_TIME_GTC, "type_filling": smart_filling  
         }
         
-        res = mt5.order_send(request)
+        res = mt5_call(mt5.order_send, request)
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
             return True
         else:
             ErrorManager.handle_mt5_error(res.retcode if res else 0, symbol, f"MARKET_{trade_type.upper()}")
             return False
 
+    @serialized_mt5
     def modify_position(self, ticket, symbol, new_sl, new_tp):
         request = {
             "action": mt5.TRADE_ACTION_SLTP, "position": ticket, "symbol": symbol,
             "sl": float(self.normalize_price(symbol, new_sl)), 
             "tp": float(self.normalize_price(symbol, new_tp))
         }
-        res = mt5.order_send(request)
+        res = mt5_call(mt5.order_send, request)
         if res.retcode != mt5.TRADE_RETCODE_DONE:
             ErrorManager.handle_mt5_error(res.retcode, symbol, "MODIFY_SL_TP")
             return False
         return True
 
+    @serialized_mt5
     def close_partial(self, ticket, symbol, volume, type_op, price):
         dynamic_dev = self.get_dynamic_deviation(symbol)
         smart_filling = self.get_smart_filling_mode(symbol) 
@@ -193,13 +225,14 @@ class MT5Interface:
             "deviation": dynamic_dev, "comment": f"PARTIAL_{ticket}",
             "type_filling": smart_filling 
         }
-        res = mt5.order_send(request)
+        res = mt5_call(mt5.order_send, request)
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
             ui_log('warning', f"✂️ Partial Closed Position #{ticket} ({symbol})")
             return True
         ErrorManager.handle_mt5_error(res.retcode if res else 0, symbol, "PARTIAL_CLOSE")
         return False
 
+    @serialized_mt5
     def close_full(self, ticket, symbol, volume, type_op, price, comment):
         dynamic_dev = self.get_dynamic_deviation(symbol)
         smart_filling = self.get_smart_filling_mode(symbol)
@@ -209,7 +242,7 @@ class MT5Interface:
             "deviation": dynamic_dev, "comment": comment,
             "type_filling": smart_filling 
         }
-        res = mt5.order_send(request)
+        res = mt5_call(mt5.order_send, request)
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
             ui_log('success', f"🔒 Closed Position #{ticket} ({symbol}) | Reason: {comment}")
             return True
@@ -229,10 +262,28 @@ class LiveSignalEngine:
         
         self.last_candle_times = {s['strategy_id']: None for s in config['strategy_instances']}
         self.lockout_until = {s['strategy_id']: pd.Timestamp(0) for s in config['strategy_instances']}
+        self.recovery_retry_after = {s['strategy_id']: pd.Timestamp(0) for s in config['strategy_instances']}
         self.active_recovery_trades = {s['strategy_id']: None for s in config['strategy_instances']}
         self.known_open_positions = {s['strategy_id']: False for s in config['strategy_instances']}
         
         self.warmup_strategies()
+
+    def update_configuration(self, config):
+        strategy_ids = {item['strategy_id'] for item in config['strategy_instances']}
+        self.last_candle_times = {key: self.last_candle_times.get(key) for key in strategy_ids}
+        self.lockout_until = {
+            key: self.lockout_until.get(key, pd.Timestamp(0)) for key in strategy_ids
+        }
+        self.recovery_retry_after = {
+            key: self.recovery_retry_after.get(key, pd.Timestamp(0)) for key in strategy_ids
+        }
+        self.active_recovery_trades = {
+            key: self.active_recovery_trades.get(key) for key in strategy_ids
+        }
+        self.known_open_positions = {
+            key: self.known_open_positions.get(key, False) for key in strategy_ids
+        }
+        self.config = config
 
     def warmup_strategies(self):
         # 🚨 FIX: اگر وارم‌آپ در تنظیمات خاموش بود، کلاً رد شو!
@@ -338,6 +389,8 @@ class LiveSignalEngine:
                 ErrorManager.catch_strategy_error(s_config.get('strategy_id', 'Unknown'), "process_entries", e)
 
     def _process_single_strategy_entry(self, s_config):
+        if s_config.get('retired', False):
+            return
         strat_id = s_config['strategy_id']
         symbol = s_config['symbol']
         magic = s_config['magic_number']
@@ -369,13 +422,16 @@ class LiveSignalEngine:
                 if is_new_candle_tick: self.last_candle_times[strat_id] = current_candle_time
                 return
 
+            if pd.Timestamp.now() < self.recovery_retry_after.get(strat_id, pd.Timestamp(0)):
+                return
+
             recovery_trade = self.active_recovery_trades[strat_id]
             t_type = recovery_trade['type']
             g_entry = recovery_trade['entry_price']
             g_sl = recovery_trade['sl']
             g_tp = recovery_trade['tp']
 
-            pending_orders = mt5.orders_get(symbol=symbol)
+            pending_orders = mt5_call(mt5.orders_get, symbol=symbol)
             has_pending, pending_ticket = False, None
             if pending_orders:
                 for p in pending_orders:
@@ -392,11 +448,13 @@ class LiveSignalEngine:
 
             if is_invalid:
                 if has_pending:
-                    res = mt5.order_send({"action": mt5.TRADE_ACTION_REMOVE, "order": pending_ticket})
-                    if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-                        ui_log('warning', f"👻 [RECOVERY CANCELLED] Market hit TP. Zombie Order KILLED!")
-                        self.active_recovery_trades[strat_id] = None
-                        if hasattr(strat, 'on_exit'): ErrorManager.safe_execute(strat_id, 'on_exit', strat.on_exit)
+                    request = {"action": mt5.TRADE_ACTION_REMOVE, "order": pending_ticket}
+                    self.mt5.submit_background(
+                        ('cancel-recovery', pending_ticket),
+                        lambda: mt5_call(mt5.order_send, request),
+                    )
+                    self.active_recovery_trades[strat_id] = None
+                    if hasattr(strat, 'on_exit'): ErrorManager.safe_execute(strat_id, 'on_exit', strat.on_exit)
                 else:
                     self.active_recovery_trades[strat_id] = None
                     if hasattr(strat, 'on_exit'): ErrorManager.safe_execute(strat_id, 'on_exit', strat.on_exit)
@@ -413,13 +471,14 @@ class LiveSignalEngine:
                             if rec_res is not None: df_recovery = rec_res
                             
                         if execute_market:
-                            success = self._execute_order(t_type, g_entry, g_sl, g_tp, s_config, df_recovery, current_candle_time, is_recovery=True)
-                            if success: self.active_recovery_trades[strat_id] = None
+                            self._execute_order(t_type, g_entry, g_sl, g_tp, s_config, df_recovery, current_candle_time, is_recovery=True)
                         else:
-                            success = self._execute_limit_order(t_type, g_entry, g_sl, g_tp, s_config, df_recovery)
-                            if not success: self.active_recovery_trades[strat_id] = None
+                            self._execute_limit_order(t_type, g_entry, g_sl, g_tp, s_config, df_recovery, is_recovery=True)
 
             if self.active_recovery_trades[strat_id] is not None:
+                if self.mt5.tasks.is_pending(('entry', magic)) or self.mt5.tasks.is_pending(('limit-entry', magic)):
+                    if is_new_candle_tick: self.last_candle_times[strat_id] = current_candle_time
+                    return
                 if is_new_candle_tick: self.last_candle_times[strat_id] = current_candle_time
                 return
 
@@ -488,20 +547,24 @@ class LiveSignalEngine:
                 strat_short = str(s_config['strategy_id'])[:6]
                 order_comment = f"{symbol}-Ghost" if is_recovery else f"{symbol}-{strat_short}"
                 
-                success = self.mt5.send_market_order(
-                    symbol, trade_type, final_lot, final_sl, final_tp, 
-                    s_config['magic_number'], comment=order_comment
-                )
-                if success:
-                    active_lev = custom_leverage if str(custom_leverage).strip() else self.margin_manager.base_leverage
-                    ui_log('success', f"✅ FILLED: {trade_type.upper()} {symbol} | Vol: {final_lot} | Leverage Applied: 1:{active_lev}")
-                    
-                    lock_seconds = s_config.get('TIMEFRAME_SECONDS', 300)
-                    self.lockout_until[s_config['strategy_id']] = pd.Timestamp.now() + pd.Timedelta(seconds=lock_seconds)
-                    return True
+                order = dict(symbol=symbol, trade_type=trade_type, volume=final_lot, sl=final_sl, tp=final_tp,
+                             magic=s_config['magic_number'], comment=order_comment)
+
+                def execute_entry():
+                    if self.mt5.send_market_order(**order):
+                        active_lev = custom_leverage if str(custom_leverage).strip() else self.margin_manager.base_leverage
+                        ui_log('success', f"✅ FILLED: {trade_type.upper()} {symbol} | Vol: {final_lot} | Leverage Applied: 1:{active_lev}")
+                        lock_seconds = s_config.get('TIMEFRAME_SECONDS', 300)
+                        self.lockout_until[s_config['strategy_id']] = pd.Timestamp.now() + pd.Timedelta(seconds=lock_seconds)
+                        if is_recovery:
+                            self.active_recovery_trades[s_config['strategy_id']] = None
+                    elif is_recovery:
+                        self.recovery_retry_after[s_config['strategy_id']] = pd.Timestamp.now() + pd.Timedelta(seconds=5)
+
+                return self.mt5.submit_background(('entry', s_config['magic_number']), execute_entry)
         return False
 
-    def _execute_limit_order(self, trade_type, entry_anchor, sl_anchor, tp_anchor, s_config, df):
+    def _execute_limit_order(self, trade_type, entry_anchor, sl_anchor, tp_anchor, s_config, df, is_recovery=False):
         symbol = s_config['symbol']
         acc_info = self.mt5.get_account_info()
         if acc_info is None: return False
@@ -535,8 +598,17 @@ class LiveSignalEngine:
                     "tp": float(final_tp), "magic": s_config['magic_number'],
                     "comment": f"{symbol}-Limit", "type_time": mt5.ORDER_TIME_GTC, "type_filling": smart_filling
                 }
-                res = mt5.order_send(request)
-                if res and res.retcode == mt5.TRADE_RETCODE_DONE: return True
+                def place_limit_order():
+                    result = mt5_call(mt5.order_send, request)
+                    if (not result or result.retcode != mt5.TRADE_RETCODE_DONE) and is_recovery:
+                        self.recovery_retry_after[s_config['strategy_id']] = pd.Timestamp.now() + pd.Timedelta(seconds=5)
+                    return bool(result and result.retcode == mt5.TRADE_RETCODE_DONE)
+
+                self.mt5.submit_background(
+                    ('limit-entry', s_config['magic_number']),
+                    place_limit_order,
+                )
+                return True
         return False
 
     def _calculate_risk_modular(self, trade_type, entry, sl, tp, s_config, df):
@@ -567,9 +639,21 @@ class LivePositionManager:
         self.config = config
         self.news_filter = news_filter
         self.last_processed_candle_time = {s['strategy_id']: None for s in config['strategy_instances']}
+        self._partial_closed_tickets = set()
+        self._partial_state_lock = threading.Lock()
+
+    def update_configuration(self, config):
+        strategy_ids = {item['strategy_id'] for item in config['strategy_instances']}
+        self.last_processed_candle_time = {
+            key: None for key in strategy_ids
+        }
+        self.config = config
 
     def manage_positions(self):
         all_positions = self.mt5.get_open_positions()
+        with self._partial_state_lock:
+            open_tickets = {position.ticket for position in (all_positions or [])}
+            self._partial_closed_tickets.intersection_update(open_tickets)
         if not all_positions: return
 
         open_magics = {p.magic for p in all_positions}
@@ -607,7 +691,7 @@ class LivePositionManager:
             'ticket': mt5_pos.ticket, 'type': 'buy' if mt5_pos.type == 0 else 'sell',
             'entry_price': mt5_pos.price_open, 'sl': mt5_pos.sl, 'tp': mt5_pos.tp,
             'lot_size': mt5_pos.volume, 'initial_sl': mt5_pos.sl, 
-            'partial_closed': "PARTIAL" in mt5_pos.comment
+            'partial_closed': "PARTIAL" in mt5_pos.comment or mt5_pos.ticket in self._partial_closed_tickets
         }
         
         closed_candle = df.iloc[-2] 
@@ -627,7 +711,12 @@ class LivePositionManager:
                     new_sl = ErrorManager.safe_execute(strat_id, 'update_sl', rule.update_sl, context_closed)
                     if new_sl:
                         norm_sl = self.mt5.normalize_price(mt5_pos.symbol, new_sl)
-                        if norm_sl != mt5_pos.sl: self.mt5.modify_position(mt5_pos.ticket, mt5_pos.symbol, norm_sl, mt5_pos.tp)
+                        if norm_sl != mt5_pos.sl:
+                            self.mt5.submit_background(
+                                ('modify-position', mt5_pos.ticket),
+                                lambda ticket=mt5_pos.ticket, symbol=mt5_pos.symbol, stop=norm_sl, target=mt5_pos.tp:
+                                    self.mt5.modify_position(ticket, symbol, stop, target),
+                            )
 
         if hasattr(strat, 'check_exit_conditions'):
             res = ErrorManager.safe_execute(strat_id, 'check_exit_conditions', strat.check_exit_conditions, current_candle, df, pos_dict)
@@ -636,15 +725,31 @@ class LivePositionManager:
                 if exit_price: self._execute_full_close(mt5_pos, exit_price, reason)
 
     def _execute_partial(self, mt5_pos, vol):
-        tick = self.mt5.get_symbol_tick(mt5_pos.symbol)
-        price = tick.bid if mt5_pos.type == 0 else tick.ask
-        self.mt5.close_partial(mt5_pos.ticket, mt5_pos.symbol, vol, 1 if mt5_pos.type == 0 else 0, price)
+        def close_partial():
+            tick = self.mt5.get_symbol_tick(mt5_pos.symbol)
+            if not tick:
+                return False
+            price = tick.bid if mt5_pos.type == 0 else tick.ask
+            success = self.mt5.close_partial(mt5_pos.ticket, mt5_pos.symbol, vol, 1 if mt5_pos.type == 0 else 0, price)
+            if success:
+                with self._partial_state_lock:
+                    self._partial_closed_tickets.add(mt5_pos.ticket)
+            return success
+
+        self.mt5.submit_background(('partial-close', mt5_pos.ticket), close_partial)
 
     def _execute_full_close(self, mt5_pos, price, reason):
-        if not isinstance(price, (int, float)):
-            tick = self.mt5.get_symbol_tick(mt5_pos.symbol)
-            price = tick.bid if mt5_pos.type == 0 else tick.ask
-        self.mt5.close_full(mt5_pos.ticket, mt5_pos.symbol, mt5_pos.volume, 1 if mt5_pos.type == 0 else 0, price, reason)
+        def close_position():
+            close_price = price
+            if not isinstance(close_price, (int, float)):
+                tick = self.mt5.get_symbol_tick(mt5_pos.symbol)
+                if not tick:
+                    return False
+                close_price = tick.bid if mt5_pos.type == 0 else tick.ask
+            return self.mt5.close_full(mt5_pos.ticket, mt5_pos.symbol, mt5_pos.volume,
+                                       1 if mt5_pos.type == 0 else 0, close_price, reason)
+
+        return self.mt5.submit_background(('full-close', mt5_pos.ticket), close_position)
 
     def _execute_full_close_guaranteed(self, mt5_pos, reason, max_retries=15):
         """
@@ -652,23 +757,26 @@ class LivePositionManager:
         در زمان انتشار خبر به دلیل نوسانات شدید، ممکن است بروکر درخواست بستن را Reject کند.
         این حلقه تا زمانی که معامله با موفقیت بسته شود، درخواست را تکرار می‌کند.
         """
-        for attempt in range(1, max_retries + 1):
-            tick = self.mt5.get_symbol_tick(mt5_pos.symbol)
-            if not tick: 
-                os_time.sleep(0.5)
-                continue
-            
-            price = tick.bid if mt5_pos.type == 0 else tick.ask
-            success = self.mt5.close_full(mt5_pos.ticket, mt5_pos.symbol, mt5_pos.volume, 1 if mt5_pos.type == 0 else 0, price, reason)
-            
-            if success:
-                return True
-                
-            ui_log('warning', f"⚠️ [RETRY {attempt}/{max_retries}] Broker rejected News Force-Close for {mt5_pos.symbol}. Retrying...")
-            os_time.sleep(1.0) 
-            
-        ui_log('error', f"❌ [FATAL ERROR] Could not close position {mt5_pos.ticket} during NEWS EMBARGO after {max_retries} attempts!")
-        return False
+        def retry_close():
+            for attempt in range(1, max_retries + 1):
+                open_positions = self.mt5.get_open_positions(mt5_pos.symbol)
+                if open_positions is not None and not any(position.ticket == mt5_pos.ticket for position in open_positions):
+                    return True
+                tick = self.mt5.get_symbol_tick(mt5_pos.symbol)
+                if not tick:
+                    os_time.sleep(0.5)
+                    continue
+                price = tick.bid if mt5_pos.type == 0 else tick.ask
+                if self.mt5.close_full(mt5_pos.ticket, mt5_pos.symbol, mt5_pos.volume,
+                                       1 if mt5_pos.type == 0 else 0, price, reason):
+                    return True
+                ui_log('warning', f"⚠️ [RETRY {attempt}/{max_retries}] Broker rejected News Force-Close for {mt5_pos.symbol}. Retrying...")
+                os_time.sleep(1.0)
+
+            ui_log('error', f"❌ [FATAL ERROR] Could not close position {mt5_pos.ticket} during NEWS EMBARGO after {max_retries} attempts!")
+            return False
+
+        return self.mt5.submit_background(('guaranteed-close', mt5_pos.ticket), retry_close)
 
     def _get_fresh_data(self, s_config):
         df = self.mt5.get_candles(s_config['symbol'], s_config['TIMEFRAME_MT5'], s_config.get('LOOKBACK_PERIOD', 100))
@@ -705,6 +813,92 @@ class LiveTrader:
         
         self.signal_engine = LiveSignalEngine(self.mt5_interface, config, self.margin_manager, self.news_filter)
         self.position_manager = LivePositionManager(self.mt5_interface, config, self.news_filter)
+        self._retired_strategy_ids = set()
+        self._deferred_strategy_configs = {}
+
+    def refresh_configuration(self, config):
+        config['MT5_PATH'] = self.config.get('MT5_PATH', config.get('MT5_PATH'))
+        current_by_id = {
+            item['strategy_id']: item for item in self.config.get('strategy_instances', [])
+        }
+        current_positions = self.mt5_interface.get_open_positions()
+        if current_positions is None:
+            return False
+        open_magics = {position.magic for position in current_positions}
+        incoming_items = config.get('strategy_instances', [])
+        incoming_ids = {item['strategy_id'] for item in incoming_items}
+        reconciled = []
+
+        for item in incoming_items:
+            strategy_id = item['strategy_id']
+            existing = current_by_id.get(strategy_id)
+            if existing and existing['magic_number'] in open_magics and (
+                existing['magic_number'] != item['magic_number'] or existing['symbol'] != item['symbol']
+            ):
+                self._deferred_strategy_configs[strategy_id] = item
+                retained = dict(existing, retired=True)
+                reconciled.append(retained)
+                self._retired_strategy_ids.add(strategy_id)
+                continue
+
+            if item['magic_number'] in open_magics and existing is None:
+                self._deferred_strategy_configs[strategy_id] = item
+                continue
+
+            if existing is not None:
+                item.pop('retired', None)
+                self._retired_strategy_ids.discard(strategy_id)
+            reconciled.append(item)
+
+        for strategy_id, existing in current_by_id.items():
+            if strategy_id in incoming_ids:
+                continue
+            if existing['magic_number'] in open_magics:
+                reconciled.append(dict(existing, retired=True))
+                self._retired_strategy_ids.add(strategy_id)
+            else:
+                self._retired_strategy_ids.discard(strategy_id)
+
+        config['strategy_instances'] = reconciled
+        self._apply_configuration(config)
+        return True
+
+    def prune_retired_strategies(self):
+        if not self._retired_strategy_ids and not self._deferred_strategy_configs:
+            return
+
+        open_positions = self.mt5_interface.get_open_positions()
+        if open_positions is None:
+            return
+        open_magics = {position.magic for position in open_positions}
+        kept = []
+        changed = False
+        for item in self.config['strategy_instances']:
+            if item['strategy_id'] in self._retired_strategy_ids and item['magic_number'] not in open_magics:
+                self._retired_strategy_ids.discard(item['strategy_id'])
+                changed = True
+                continue
+            kept.append(item)
+
+        for strategy_id, item in list(self._deferred_strategy_configs.items()):
+            if item['magic_number'] not in open_magics:
+                self._deferred_strategy_configs.pop(strategy_id, None)
+                kept = [current for current in kept if current['strategy_id'] != strategy_id]
+                item.pop('retired', None)
+                kept.append(item)
+                self._retired_strategy_ids.discard(strategy_id)
+                changed = True
+
+        if changed:
+            config = dict(self.config, strategy_instances=kept)
+            self._apply_configuration(config)
+
+    def _apply_configuration(self, config):
+        self.config = config
+        self.margin_manager.update_configuration(config)
+        self.target_lock.update_configuration(config)
+        self.signal_engine.update_configuration(config)
+        self.position_manager.update_configuration(config)
 
     def run(self):
         ui_log('success', "🟢 Universal Bot is Active and Listening to the Market...")
@@ -729,17 +923,17 @@ class LiveTrader:
                 self.position_manager.manage_positions()
                 self.signal_engine.process_entries()
                 
-                if mt5.terminal_info():
-                    acc = mt5.account_info()
+                if mt5_call(mt5.terminal_info):
+                    acc = mt5_call(mt5.account_info)
                     if acc:
-                        pos_count = mt5.positions_total()
+                        pos_count = mt5_call(mt5.positions_total)
                         # UI Update call would be here normally, handled via Main.py in your app
                         
                 os_time.sleep(1)
                 
             except KeyboardInterrupt:
                 ui_log('warning', "\n🛑 Stopped by User.")
-                mt5.shutdown()
+                mt5_call(mt5.shutdown)
                 break
             except Exception as e:
                 ErrorManager.catch_strategy_error("CORE_ENGINE", "Main_Loop", e)

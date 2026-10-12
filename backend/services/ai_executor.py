@@ -7,6 +7,7 @@ if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
 import MetaTrader5 as mt5
+from core.mt5_runtime import mt5_call
 from core.trading_engine import MT5Interface
 from trading.risk_manager import PercentRiskRule, FixedRiskAmountRule, FixedLotRule
 from core.error_handler import ui_log
@@ -146,7 +147,7 @@ class AITradeExecutor:
         }
         
         # --- 6. Execution ---
-        res = mt5.order_send(request)
+        res = mt5_call(mt5.order_send, request)
         
         success = (res and res.retcode == mt5.TRADE_RETCODE_DONE)
         if not success and res:

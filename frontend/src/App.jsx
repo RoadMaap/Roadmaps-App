@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { LanguageProvider } from './context/LanguageContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { EngineStateProvider } from './context/EngineStateContext';
+import { ConfigStateProvider } from './context/ConfigStateContext';
 import Login from './auth/Login';
 import Dashboard from './components/dashboard/Dashboard';
 import UpdateProgressScreen from './components/UpdateProgressScreen';
@@ -15,6 +18,7 @@ function toStrictBoolean(value) {
 
 function MainApp() {
   const { t } = useLanguage();
+  const { setPlan } = useAuth();
   const [view, setView] = useState('login');
   const [updateInfo, setUpdateInfo] = useState(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
@@ -104,7 +108,7 @@ function MainApp() {
   }
 
   if (view === 'login') {
-    return <Login onLoginSuccess={() => setView('dashboard')} />;
+    return <Login onLoginSuccess={(plan) => { setPlan(plan); setView('dashboard'); }} />;
   }
 
   return (
@@ -118,7 +122,13 @@ function MainApp() {
 export default function App() {
   return (
     <LanguageProvider>
-      <MainApp />
+      <AuthProvider>
+        <EngineStateProvider>
+          <ConfigStateProvider>
+            <MainApp />
+          </ConfigStateProvider>
+        </EngineStateProvider>
+      </AuthProvider>
     </LanguageProvider>
   );
 }

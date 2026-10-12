@@ -4,23 +4,25 @@ import Sidebar from '../sidebar/Sidebar';
 import DashboardHeader from './DashboardHeader';
 import DashboardTabs from './DashboardTabs';
 import OptionalUpdateModal from './OptionalUpdateModal';
+import { useEngineLogActions, useEngineMetricActions, useEngineRunning, useEngineStatusActions } from '../../context/EngineStateContext';
+import { useConfigActions, useMt5Path, useStrategies } from '../../context/ConfigStateContext';
 
 const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
     const { t, toggleLanguage } = useLanguage();
     const mainContentRef = useRef(null);
-    const [mt5Path, setMt5Path] = useState('');
+    const { appendLog } = useEngineLogActions();
+    const { setLiveData } = useEngineMetricActions();
+    const { setIsRunning } = useEngineStatusActions();
+    const { setStrategies, setMt5Path } = useConfigActions();
+    const mt5Path = useMt5Path();
+    const strategies = useStrategies();
+    const isRunning = useEngineRunning();
     const [initialData, setInitialData] = useState(null);
-    const [logs, setLogs] = useState([]);
     const [activeTab, setActiveTab] = useState('dashboard');
-    const [strategies, setStrategies] = useState({});
     const [userName, setUserName] = useState('');
     const [showOptionalModal, setShowOptionalModal] = useState(false);
     const [dismissedOptionalVersion, setDismissedOptionalVersion] = useState(null);
     const [nextNews, setNextNews] = useState(null);
-    const [isRunning, setIsRunning] = useState(false);
-    const [profitHistory, setProfitHistory] = useState(Array(15).fill(0));
-    const [initialEquity, setInitialEquity] = useState(null);
-    const [liveData, setLiveData] = useState({ profit: 0, equity: 0, positions: 0 });
 
     useEffect(() => {
         const fetchInit = async () => {
@@ -91,10 +93,7 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
             color = 'text-yellow-500';
             if (message?.includes('توقف') || message?.includes('Stop') || message?.includes('Halting')) setIsRunning(false);
         }
-        setLogs((previousLogs) => {
-            const newLogs = [...(previousLogs || []), { time, message: message || '', color }];
-            return newLogs.length > 100 ? newLogs.slice(-100) : newLogs;
-        });
+        appendLog({ time, message: message || '', color });
     }
 
     const handleToggleEngine = async () => {
@@ -115,25 +114,7 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
         const nextProfit = parseFloat(profit) || 0;
         const nextEquity = parseFloat(equity) || 0;
         setLiveData({ profit: nextProfit, equity: nextEquity, positions: positions || 0 });
-        setProfitHistory((previousHistory) => {
-            const newHistory = [...(previousHistory || []), nextProfit];
-            if (newHistory.length > 20) newHistory.shift();
-            return newHistory;
-        });
-        if (initialEquity === null && nextEquity > 0) setInitialEquity(nextEquity - nextProfit);
     }
-
-    const getEquityProgress = () => {
-        if (!initialEquity || initialEquity <= 0) return { width: '0%', isProfit: true, percent: '0.0' };
-        const currentEquity = liveData?.equity || 0;
-        if (currentEquity >= initialEquity) {
-            const profitPercent = 100 - (initialEquity / currentEquity) * 100;
-            return { width: `${profitPercent}%`, isProfit: true, percent: profitPercent.toFixed(1) };
-        }
-        const remainingPercent = (currentEquity / initialEquity) * 100;
-        const lossPercent = 100 - remainingPercent;
-        return { width: `${remainingPercent}%`, isProfit: false, percent: lossPercent.toFixed(1) };
-    };
 
     const handleStrategyConfigUpdate = (strategyName, newConfig) => {
         setStrategies((previousStrategies) => ({
@@ -146,7 +127,6 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
         if (window.eel) window.eel.update_strategy_config(strategyName, 'config', newConfig);
     };
 
-    const equityProgress = getEquityProgress();
     const status = isRunning ? 'Running' : mt5Path ? 'Ready' : 'Disconnected';
 
     return (
@@ -177,17 +157,7 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
                                 activeTab={activeTab}
                                 initialData={initialData}
                                 nextNews={nextNews}
-                                liveData={liveData}
-                                profitHistory={profitHistory}
-                                equityProgress={equityProgress}
-                                mt5Path={mt5Path}
-                                onPathChange={setMt5Path}
-                                logs={logs}
-                                isRunning={isRunning}
                                 onToggleEngine={handleToggleEngine}
-                                onClearLogs={() => setLogs([])}
-                                strategies={strategies}
-                                onStrategiesChange={setStrategies}
                                 onUpdateConfig={handleStrategyConfigUpdate}
                             />
                         </div>
