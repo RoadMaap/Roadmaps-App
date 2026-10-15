@@ -3,7 +3,7 @@
 
 import MetaTrader5 as mt5
 import time
-from core.mt5_runtime import mt5_call
+from core.mt5_runtime import mt5_call, mt5_order_send
 
 class TargetLockManager:
     def __init__(self, config):
@@ -116,7 +116,7 @@ class TargetLockManager:
                     "action": mt5.TRADE_ACTION_REMOVE, 
                     "order": o.ticket
                 }
-                res = mt5_call(mt5.order_send, request)
+                res = mt5_order_send(request, "TARGET_LOCK_CANCEL")
                 if res and res.retcode == mt5.TRADE_RETCODE_DONE:
                     print(f"   🗑️ Removed pending order {o.ticket}")
                 else:

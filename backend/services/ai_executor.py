@@ -7,7 +7,7 @@ if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
 import MetaTrader5 as mt5
-from core.mt5_runtime import mt5_call
+from core.mt5_runtime import mt5_call, mt5_order_send
 from core.trading_engine import MT5Interface
 from trading.risk_manager import PercentRiskRule, FixedRiskAmountRule, FixedLotRule
 from core.error_handler import ui_log
@@ -147,15 +147,15 @@ class AITradeExecutor:
         }
         
         # --- 6. Execution ---
-        res = mt5_call(mt5.order_send, request)
+        res = mt5_order_send(request, f"AI_PENDING_{trade_bias.upper()}")
         
-        success = (res and res.retcode == mt5.TRADE_RETCODE_DONE)
+        success = (res and res.retcode in {mt5.TRADE_RETCODE_DONE, mt5.TRADE_RETCODE_PLACED})
         if not success and res:
             from core.error_handler import ErrorManager
             ErrorManager.handle_mt5_error(res.retcode, symbol, f"AI_PENDING_{trade_bias.upper()}")
             return {"success": False, "message": f"Broker Rejected: {res.comment} (Code {res.retcode})"}
         elif not res:
-            return {"success": False, "message": "MT5 Terminal failed to process the request."}
+            return {"success": False, "message": "MT5 Terminal failed to process the request. See the local MT5 error in the log."}
 
         ui_log('success', f"✅ AI PENDING ORDER SECURED: {trade_bias.upper()} {lot_size} Lot on {symbol}!")
         return {"success": True, "message": f"Successfully Executed Pending {trade_bias.upper()} {lot_size} Lot on {symbol}!"}

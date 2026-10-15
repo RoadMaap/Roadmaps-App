@@ -60,26 +60,27 @@ def build_live_config():
     source = jm.get_live_configuration_source()
     user_settings = source['settings']
     mt5_path = user_settings.get("mt5_path")
+    is_pro_plan = str(user_settings.get('plan', 'Basic')).strip().lower() in {'pro', 'advance'}
     
     # --- 🛡️ Global Settings Validation Layer ---
     try:
-        global_be_enabled = user_settings.get('be_enabled', False)
+        global_be_enabled = is_pro_plan and user_settings.get('be_enabled', False)
         global_be_trigger = validate_number(user_settings.get('be_trigger', 1.0), float, 'Breakeven Trigger')
         
-        global_pc_enabled = user_settings.get('pc_enabled', False)
+        global_pc_enabled = is_pro_plan and user_settings.get('pc_enabled', False)
         global_pc_vol = validate_number(user_settings.get('pc_volume', 50.0), float, 'Partial Volume (%)')
         global_pc_trigger = validate_number(user_settings.get('pc_trigger', 2.0), float, 'Partial Trigger')
         
-        global_tl_enabled = user_settings.get('tl_enabled', False)
+        global_tl_enabled = is_pro_plan and user_settings.get('tl_enabled', False)
         global_tl_trigger = validate_number(user_settings.get('tl_trigger', 10200.0), float, 'Daily Target Lock')
             
-        global_wu_enabled = user_settings.get('wu_enabled', True)
+        global_wu_enabled = is_pro_plan and user_settings.get('wu_enabled', True)
         global_wu_candles = validate_number(user_settings.get('wu_candles', 500), int, 'Warm-up Candles')
         
         margin_enabled = user_settings.get('margin_enabled', False)
         margin_limit = validate_number(user_settings.get('margin_limit', 50.0), float, 'Max Margin Limit (%)')
         
-        nf_enabled = user_settings.get('nf_enabled', False)
+        nf_enabled = is_pro_plan and user_settings.get('nf_enabled', False)
         nf_eur = user_settings.get('nf_eur', True)
         nf_usd = user_settings.get('nf_usd', True)
         nf_before = validate_number(user_settings.get('nf_before', 30), int, 'News Filter (Mins Before)')

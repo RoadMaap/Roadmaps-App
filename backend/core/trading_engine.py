@@ -22,7 +22,7 @@ try:
     from trading.margin_calculator import MarginManager
     from core.target_lock import TargetLockManager
     from core.error_handler import ErrorManager, ui_log
-    from core.mt5_runtime import MT5TaskExecutor, mt5_call, serialized_mt5
+    from core.mt5_runtime import MT5TaskExecutor, mt5_call, mt5_order_send, serialized_mt5
 except ImportError as e:
     print(f"❌ Critical Core Engine Import Error: {e}")
     sys.exit(1)
@@ -195,7 +195,7 @@ class MT5Interface:
             "type_time": mt5.ORDER_TIME_GTC, "type_filling": smart_filling  
         }
         
-        res = mt5_call(mt5.order_send, request)
+        res = mt5_order_send(request, f"MARKET_{trade_type.upper()}")
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
             return True
         else:
@@ -209,9 +209,9 @@ class MT5Interface:
             "sl": float(self.normalize_price(symbol, new_sl)), 
             "tp": float(self.normalize_price(symbol, new_tp))
         }
-        res = mt5_call(mt5.order_send, request)
-        if res.retcode != mt5.TRADE_RETCODE_DONE:
-            ErrorManager.handle_mt5_error(res.retcode, symbol, "MODIFY_SL_TP")
+        res = mt5_order_send(request, "MODIFY_SL_TP")
+        if not res or res.retcode != mt5.TRADE_RETCODE_DONE:
+            ErrorManager.handle_mt5_error(res.retcode if res else 0, symbol, "MODIFY_SL_TP")
             return False
         return True
 
@@ -225,7 +225,7 @@ class MT5Interface:
             "deviation": dynamic_dev, "comment": f"PARTIAL_{ticket}",
             "type_filling": smart_filling 
         }
-        res = mt5_call(mt5.order_send, request)
+        res = mt5_order_send(request, "PARTIAL_CLOSE")
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
             ui_log('warning', f"✂️ Partial Closed Position #{ticket} ({symbol})")
             return True
@@ -242,7 +242,7 @@ class MT5Interface:
             "deviation": dynamic_dev, "comment": comment,
             "type_filling": smart_filling 
         }
-        res = mt5_call(mt5.order_send, request)
+        res = mt5_order_send(request, "FULL_CLOSE")
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
             ui_log('success', f"🔒 Closed Position #{ticket} ({symbol}) | Reason: {comment}")
             return True
@@ -451,7 +451,7 @@ class LiveSignalEngine:
                     request = {"action": mt5.TRADE_ACTION_REMOVE, "order": pending_ticket}
                     self.mt5.submit_background(
                         ('cancel-recovery', pending_ticket),
-                        lambda: mt5_call(mt5.order_send, request),
+                        lambda: mt5_order_send(request, "CANCEL_RECOVERY"),
                     )
                     self.active_recovery_trades[strat_id] = None
                     if hasattr(strat, 'on_exit'): ErrorManager.safe_execute(strat_id, 'on_exit', strat.on_exit)
@@ -587,7 +587,6 @@ class LiveSignalEngine:
 
             if final_lot > 0:
                 active_lev = custom_leverage if str(custom_leverage).strip() else self.margin_manager.base_leverage
-                ui_log('warning', f"🎣 [MT5 LIMIT PLACED] Waiting: {calc_entry} | Vol: {final_lot} | Leverage: 1:{active_lev}")
                 
                 mt5_type = mt5.ORDER_TYPE_BUY_LIMIT if trade_type == 'buy' else mt5.ORDER_TYPE_SELL_LIMIT
                 smart_filling = self.mt5.get_smart_filling_mode(symbol)
@@ -599,10 +598,18 @@ class LiveSignalEngine:
                     "comment": f"{symbol}-Limit", "type_time": mt5.ORDER_TIME_GTC, "type_filling": smart_filling
                 }
                 def place_limit_order():
-                    result = mt5_call(mt5.order_send, request)
-                    if (not result or result.retcode != mt5.TRADE_RETCODE_DONE) and is_recovery:
+                    result = mt5_order_send(request, f"LIMIT_{s_config['strategy_id']}")
+                    accepted_codes = {mt5.TRADE_RETCODE_DONE, mt5.TRADE_RETCODE_PLACED}
+                    if result and result.retcode in accepted_codes:
+                        ui_log('success', f"🎣 [MT5 LIMIT ACCEPTED] Waiting: {calc_entry} | Vol: {final_lot} | Leverage: 1:{active_lev} | Ticket: {getattr(result, 'order', 0)}")
+                        return True
+
+                    retcode = getattr(result, 'retcode', 'NO RESPONSE (see local validation error above)')
+                    comment = getattr(result, 'comment', 'MT5 did not return an order result')
+                    ui_log('error', f"❌ [MT5 LIMIT REJECTED] {symbol} | Retcode: {retcode} | Reason: {comment}")
+                    if is_recovery:
                         self.recovery_retry_after[s_config['strategy_id']] = pd.Timestamp.now() + pd.Timedelta(seconds=5)
-                    return bool(result and result.retcode == mt5.TRADE_RETCODE_DONE)
+                    return False
 
                 self.mt5.submit_background(
                     ('limit-entry', s_config['magic_number']),

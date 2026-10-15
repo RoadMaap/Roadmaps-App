@@ -108,7 +108,11 @@ function MainApp() {
   }
 
   if (view === 'login') {
-    return <Login onLoginSuccess={(plan) => { setPlan(plan); setView('dashboard'); }} />;
+    return <Login onLoginSuccess={async (plan) => {
+      setPlan(plan);
+      if (window.eel) await window.eel.save_user_config({ plan: plan || 'Basic' })();
+      setView('dashboard');
+    }} />;
   }
 
   return (

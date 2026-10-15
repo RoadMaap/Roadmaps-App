@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 
-const UpgradeModal = ({ onClose, onUpgrade, lang, t }) => {
+const UpgradeModal = ({ onClose, onUpgrade, onDemo, lang, t }) => {
     const features = [
         'feature_unlimited_strategies',
         'feature_ai_vision',
@@ -47,6 +47,9 @@ const UpgradeModal = ({ onClose, onUpgrade, lang, t }) => {
                     {t('upgrade_account')}
                     <span aria-hidden="true">↗</span>
                 </button>
+                <button type="button" onClick={onDemo} className="mt-3 min-h-10 w-full rounded-md border border-[#3A3940] px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-200">
+                    {t('try_pro_demo')}
+                </button>
             </section>
         </div>
     ), document.body);
@@ -54,7 +57,7 @@ const UpgradeModal = ({ onClose, onUpgrade, lang, t }) => {
 
 const DashboardHeader = ({ activeTab, userName, strategyCount, hasUpdate, onShowUpdate, onToggleLanguage }) => {
     const { t, lang } = useLanguage();
-    const { plan } = useAuth();
+    const { plan, setPlan } = useAuth();
     const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
     const isBasic = String(plan).toLowerCase() === 'basic';
     const title = activeTab === 'dashboard'
@@ -121,6 +124,11 @@ const DashboardHeader = ({ activeTab, userName, strategyCount, hasUpdate, onShow
             {isUpgradeModalOpen && (
                 <UpgradeModal
                     onClose={() => setIsUpgradeModalOpen(false)}
+                    onDemo={async () => {
+                        setPlan('Pro');
+                        if (window.eel) await window.eel.save_user_config({ plan: 'Pro' })();
+                        setIsUpgradeModalOpen(false);
+                    }}
                     onUpgrade={() => {
                         window.dispatchEvent(new CustomEvent('roadmaps:upgrade-requested', { detail: { requiredPlan: 'Pro' } }));
                         setIsUpgradeModalOpen(false);

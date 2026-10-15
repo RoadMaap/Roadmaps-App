@@ -130,8 +130,9 @@ def on_close(page, sockets):
 
             try:
                 import MetaTrader5 as mt5
-                from core.mt5_runtime import mt5_call
+                from core.mt5_runtime import mt5_call, shutdown_mt5_dispatcher
                 mt5_call(mt5.shutdown)
+                shutdown_mt5_dispatcher(wait=True)
                 print("🔌 MT5 Connection Safely Disconnected.")
             except Exception:
                 pass

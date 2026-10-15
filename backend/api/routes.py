@@ -176,6 +176,11 @@ def get_initial_data():
 @eel.expose
 def save_user_config(data):
     """Saves user-modified configurations back to local JSON storage."""
+    if isinstance(data, dict) and 'plan' in data:
+        selected_plan = str(data['plan'] or 'Basic').strip().title()
+        if selected_plan in {'Basic', 'Pro', 'Advance'}:
+            ACTIVE_SESSION['plan'] = selected_plan
+
     result = jm.save_settings_to_file(data)
     if result.get('success'):
         _signal_live_configuration_refresh()
