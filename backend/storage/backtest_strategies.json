@@ -1,0 +1,38 @@
+{
+  "XEN": {
+    "file_path": "C:/Users/alire/OneDrive/Desktop/XEN.py",
+    "params": {
+      "EMA_LEN": 50,
+      "RSI_LEN": 14,
+      "MIN_LOOKBACK": 50,
+      "TP_MULTIPLIER": 2.0,
+      "RSI_BUY_LEVEL": 50.0,
+      "RSI_SELL_LEVEL": 50.0
+    },
+    "config": {
+      "symbol": "XAUUSD.",
+      "timeframe": "M1",
+      "TIMEFRAME_SECONDS": 60,
+      "lookback": 500,
+      "spread_divisor": 1000,
+      "commission_per_lot": 0.0,
+      "point_value": 1.0,
+      "contract_size": 100,
+      "tick_size": 0.01,
+      "candle_type": "STANDARD",
+      "risk_mode": "fixed_usd",
+      "risk_value": 100,
+      "allowed_days": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "killzones": [
+        "03:00-23:00"
+      ],
+      "leverage": ""
+    }
+  }
+}

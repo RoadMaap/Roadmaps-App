@@ -6,6 +6,7 @@ import DashboardTabs from './DashboardTabs';
 import OptionalUpdateModal from './OptionalUpdateModal';
 import { useEngineLogActions, useEngineMetricActions, useEngineRunning, useEngineStatusActions } from '../../context/EngineStateContext';
 import { useConfigActions, useMt5Path, useStrategies } from '../../context/ConfigStateContext';
+import { useBacktest } from '../../context/BacktestContext';
 
 const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
     const { t, toggleLanguage } = useLanguage();
@@ -17,6 +18,7 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
     const mt5Path = useMt5Path();
     const strategies = useStrategies();
     const isRunning = useEngineRunning();
+    const { appMode, setAppMode, setCurrentTab, hasUnreadBacktestResult, strategies: btStrategies, setStrategies: setBacktestStrategies, setSettings: setBacktestSettings } = useBacktest();
     const [initialData, setInitialData] = useState(null);
     const [activeTab, setActiveTab] = useState('dashboard');
     const [userName, setUserName] = useState('');
@@ -62,7 +64,40 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
 
     useEffect(() => {
         if (mainContentRef.current) mainContentRef.current.scrollTop = 0;
-    }, [activeTab]);
+    }, [activeTab, appMode]);
+
+    useEffect(() => {
+        setCurrentTab(activeTab);
+    }, [activeTab, setCurrentTab]);
+
+    useEffect(() => {
+        if (appMode !== 'backtest') {
+            setActiveTab((current) => (current === 'bt_overview' || current === 'bt_strategies' || current === 'bt_analytics' || current === 'bt_plot' ? 'dashboard' : current));
+            return;
+        }
+        setActiveTab((current) => (current === 'dashboard' || current === 'strategies' || current === 'analyze' || current === 'education' ? 'bt_overview' : current));
+    }, [appMode]);
+
+    useEffect(() => {
+        if (appMode !== 'backtest' || !window.eel) return;
+        const fetchBacktestInit = async () => {
+            try {
+                const payload = await window.eel.get_backtest_initial_data()();
+                if (payload?.settings) setBacktestSettings(payload.settings);
+                if (payload?.strategies) setBacktestStrategies(payload.strategies);
+            } catch (error) {
+                console.error('Error loading backtest data from Eel:', error);
+            }
+        };
+        fetchBacktestInit();
+    }, [appMode, setBacktestSettings, setBacktestStrategies]);
+
+    useEffect(() => {
+        if (appMode !== 'live' || !window.eel) return;
+        window.eel.get_initial_data()().then((payload) => {
+            if (payload?.strategies) setStrategies(payload.strategies);
+        }).catch((error) => console.error('Error refreshing live strategies from Eel:', error));
+    }, [appMode, setStrategies]);
 
     useEffect(() => {
         const optionalVersion = updateInfo?.latest_version ?? 'available';
@@ -128,11 +163,22 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
     };
 
     const status = isRunning ? 'Running' : mt5Path ? 'Ready' : 'Disconnected';
+    const strategyCount = appMode === 'backtest' ? Object.keys(btStrategies || {}).length : Object.keys(strategies || {}).length;
 
     return (
         <div className="flex h-screen flex-col overflow-hidden bg-[#141318] font-sans text-[#FCFCFD] selection:bg-[#F28C45]/20">
             <div className="relative flex flex-1 overflow-hidden">
-                <Sidebar status={status} activeTab={activeTab} onTabChange={setActiveTab} />
+                <Sidebar
+                    status={status}
+                    activeTab={activeTab}
+                    appMode={appMode}
+                    hasUnreadBacktestResult={hasUnreadBacktestResult}
+                    onTabChange={(tab) => {
+                        setActiveTab(tab);
+                        setCurrentTab(tab);
+                    }}
+                    onModeChange={(nextMode) => setAppMode(nextMode)}
+                />
                 <main ref={mainContentRef} className="relative z-10 flex h-full min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] bg-[#141318] custom-scroll">
                     <div
                         aria-hidden="true"
@@ -145,8 +191,9 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
                     />
                     <DashboardHeader
                         activeTab={activeTab}
+                        appMode={appMode}
                         userName={userName}
-                        strategyCount={Object.keys(strategies || {}).length}
+                        strategyCount={strategyCount}
                         hasUpdate={Boolean(updateInfo)}
                         onShowUpdate={() => setShowOptionalModal(true)}
                         onToggleLanguage={toggleLanguage}
@@ -155,6 +202,7 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
                         <div className="mx-auto h-full w-full max-w-[1920px]">
                             <DashboardTabs
                                 activeTab={activeTab}
+                                appMode={appMode}
                                 initialData={initialData}
                                 nextNews={nextNews}
                                 onToggleEngine={handleToggleEngine}

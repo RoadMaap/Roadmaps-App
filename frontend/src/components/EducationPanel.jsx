@@ -5,92 +5,94 @@ const EducationPanel = () => {
     const { t } = useLanguage();
     const [isCopied, setIsCopied] = useState(false);
 
-    // قالب فوق‌پیشرفته، شامل گاردریل‌ها و قوانین استخراج شده از کدهای لایو
+    // Python strategy template with the required Live and V3.9 Backtest contracts.
     const templateCode = `import pandas as pd
 import numpy as np
 import pandas_ta as ta
 import mplfinance as mpf
 
 class Strategy:
-    def __init__(self, params):
+    def __init__(self, params=None):
         """
-        ⚠️ AI INSTRUCTION - STRICT GUARDRAILS (MUST FOLLOW):
-        1. NO LOOKAHEAD BIAS: NEVER use iloc[-1]['close'], ['high'], or ['low'] for logic. 
-            ONLY use iloc[-1]['open'] as the entry_price. All logic MUST use iloc[-2] (Confirmed Candle).
-        2. ZERO DIVISION: ALWAYS handle division by zero. If calculating range, use: (high - low).replace(0, 0.00001).
-        3. PANDAS_TA QUIRKS: Multi-column indicators (MACD, BBANDS) change column names based on params.
-            ALWAYS extract them using index: macd_df = ta.macd(close); data['MACD'] = macd_df.iloc[:, 0]
-        4. SAFE CASTING: ALWAYS wrap params in int() or float() (e.g., length=int(self.params.get('LEN', 14))).
-        5. BOOLEAN SAFETY: ALWAYS wrap pandas boolean extractions in bool() to avoid Truth Value errors.
-            Example: is_bullish = bool(signal_candle['close'] > signal_candle['open'])
+        AI INSTRUCTIONS: Follow every rule in this contract.
+        1. Prevent lookahead bias. The final row is the newly opened current candle. Use only its open for entry price and use closed candles such as df.iloc[-2] and df.iloc[-3] for signal conditions. Never use the current candle's high, low, close, volume, or derived indicators for entry logic.
+        2. Handle division by zero explicitly. For a range series, replace zero values with a small positive value before division.
+        3. Multi-column pandas_ta indicators can change output column names. Select output columns by position or inspect the returned DataFrame before assigning them.
+        4. Convert parameters explicitly with int() or float() before using them.
+        5. Convert pandas scalar comparisons to bool() before using them in Python conditionals.
+        6. Preserve this complete method contract for both Live and V3.9 Backtest engines.
         """
-        self.params = params
+        self.params = params or {}
 
-    def prepare_indicators(self, data, candle_type='STANDARD'):
-        # ⚠️ Example of SAFE indicator extraction:
-        # ema_len = int(self.params.get('EMA_LEN', 50))
-        # data['EMA'] = ta.ema(data['close'], length=ema_len)
-        
-        data.dropna(inplace=True)
-        return data
+    def prepare_indicators(self, df, candle_type='STANDARD'):
+        ema_length = int(self.params.get('EMA_LEN', 50))
+        df[f'EMA_{ema_length}'] = ta.ema(df['close'], length=ema_length)
+        return df
 
-    def check_entry_signal(self, history_slice):
-        # 1. Validation (Safe Minimum Length)
+    def get_essential_indicator_columns(self):
+        """
+        Return only continuous columns that contain valid values on every usable bar after warm-up.
+        Never include sparse directional columns such as SUPERTl_*, SUPERTs_*, PSARl_*, PSARs_*, or signal markers. The engine drops rows containing NaN in every listed column, so sparse columns can remove the complete dataset and result in zero trades.
+        """
+        ema_length = int(self.params.get('EMA_LEN', 50))
+        return [f'EMA_{ema_length}']
+
+    def check_entry_signal(self, df):
         min_len = int(self.params.get('MIN_LOOKBACK', 50))
-        if len(history_slice) < min_len: return None, None, None, None
+        if len(df) < max(min_len, 3):
+            return None, 0.0, 0.0, 0.0
 
-        # 2. Candle Definitions
-        signal_candle = history_slice.iloc[-2]   # Confirmed Candle (USE THIS FOR LOGIC)
-        current_candle = history_slice.iloc[-1]  # Market Open (ONLY USE ['open'])
-        
+        signal_candle = df.iloc[-2]
+        current_candle = df.iloc[-1]
         trade_type = None
         entry_price = float(current_candle['open'])
         stop_loss = 0.0
         take_profit = 0.0
 
-        # --- LOGIC START ---
-        # ⚠️ AI INSTRUCTION: trade_type MUST be exactly 'buy' or 'sell' (lowercase). NEVER use 'LONG'/'SHORT'.
-        
-        # Example Logic:
-        # is_cross_up = bool(signal_candle['MACD'] > signal_candle['MACD_Signal'])
-        # if is_cross_up:
-        #     trade_type = 'buy'
-        #     stop_loss = float(signal_candle['low'] - 2.0)
-        #     take_profit = float(entry_price + (entry_price - stop_loss) * 2.0)
-        # --- LOGIC END ---
+        is_bullish = bool(signal_candle['close'] > signal_candle['open'])
+        if is_bullish:
+            trade_type = 'buy'
+            stop_loss = float(signal_candle['low'] - 2.0)
+            take_profit = float(entry_price + (entry_price - stop_loss) * 2.0)
 
-        # 3. Engine Safety Net & Strict SL Validation
         if trade_type in ['buy', 'sell']:
-            if stop_loss <= 0 or take_profit <= 0: return None, None, None, None
-            
-            # Anti-Crash: Prevent Invalid SL direction
+            if stop_loss <= 0 or take_profit <= 0:
+                return None, entry_price, 0.0, 0.0
             risk_distance = abs(entry_price - stop_loss)
-            if risk_distance <= 0: return None, None, None, None
-            if trade_type == 'buy' and stop_loss >= entry_price: return None, None, None, None
-            if trade_type == 'sell' and stop_loss <= entry_price: return None, None, None, None
+            if risk_distance <= 0:
+                return None, entry_price, 0.0, 0.0
+            if trade_type == 'buy' and stop_loss >= entry_price:
+                return None, entry_price, 0.0, 0.0
+            if trade_type == 'sell' and stop_loss <= entry_price:
+                return None, entry_price, 0.0, 0.0
 
             return trade_type, entry_price, stop_loss, take_profit
 
-        return None, None, None, None
+        return None, entry_price, stop_loss, take_profit
 
     def check_exit_conditions(self, current_candle, history_slice, position):
         """
-        ⚠️ AI INSTRUCTION: MUST return exactly TWO values: (exit_price, reason_string) or (None, None).
+        Return exactly two values: (exit_price, reason_string) or (None, None).
         """
         return None, None
 
-    def get_plot_addplots(self, plot_data, ap, config):
-        """
-        ⚠️ AI INSTRUCTION: Always check if plot_data is empty before appending!
-        """
-        if plot_data is None or plot_data.empty:
-            return ap, (3, 1)
+    def on_entry(self):
+        pass
 
-        # Example:
-        # if 'EMA' in plot_data.columns and not plot_data['EMA'].isna().all():
-        #     ap.append(mpf.make_addplot(plot_data['EMA'], color='blue', width=1.0))
+    def on_exit(self):
+        pass
 
-        return ap, (3, 1)
+    def get_plot_addplots(self, df, ap, config):
+        """
+        Use only the provided df slice. Never use self.df or call df.dropna() in this method.
+        Check that each column exists and has non-NaN values before creating an addplot. Return (ap, (6, 1)) when adding a panel=1 oscillator; return ap when plotting only on panel 0.
+        """
+        if df is None or df.empty:
+            return ap
+        ema_column = f"EMA_{int(self.params.get('EMA_LEN', 50))}"
+        if ema_column in df.columns and not df[ema_column].dropna().empty:
+            ap.append(mpf.make_addplot(df[ema_column], color='blue', width=1.0, panel=0))
+        return ap
 `;
 
     const handleCopy = async () => {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useConfigActions, useStrategies } from '../context/ConfigStateContext';
+import { useBacktest } from '../context/BacktestContext';
 import PremiumGuard from './PremiumGuard';
 
 const CustomSelect = ({ label, value, options, onChange, prefixIcon }) => {
@@ -62,10 +63,14 @@ const CustomSelect = ({ label, value, options, onChange, prefixIcon }) => {
     );
 };
 
-const StrategyPanel = ({ onUpdateConfig }) => {
+const StrategyPanel = ({ onUpdateConfig, mode = 'live' }) => {
     const { t, lang } = useLanguage();
-    const strategies = useStrategies();
-    const { setStrategies } = useConfigActions();
+    const liveStrategies = useStrategies();
+    const { setStrategies: setLiveStrategies } = useConfigActions();
+    const backtest = useBacktest();
+    const isBacktest = mode === 'backtest';
+    const strategies = isBacktest ? backtest.strategies : liveStrategies;
+    const setStrategies = (updater) => (isBacktest ? backtest.setStrategies : setLiveStrategies)(updater);
     const [isLoading, setIsLoading] = useState(false);
     const [expandedStrategies, setExpandedStrategies] = useState([]);
     const [strategyToDelete, setStrategyToDelete] = useState(null);
@@ -109,7 +114,9 @@ const StrategyPanel = ({ onUpdateConfig }) => {
             try {
                 const path = await window.eel.open_strategy_file_dialog()();
                 if (path) {
-                    const res = await window.eel.load_custom_strategy(path)();
+                    const res = isBacktest
+                        ? await window.eel.load_custom_backtest_strategy(path)()
+                        : await window.eel.load_custom_strategy(path)();
                     if (res?.success && res?.strategies) {
                         setStrategies(res.strategies);
                     } else if (res?.message === 'BASIC_LIMIT_STRATEGIES') {
@@ -125,6 +132,37 @@ const StrategyPanel = ({ onUpdateConfig }) => {
         setIsLoading(false);
     };
 
+    const handleAutoDetect = async (strategyName, symbol) => {
+        if (!window.eel || !symbol) return;
+        try {
+            const result = await window.eel.detect_mt5_symbol_specs(symbol, backtest.settings.mt5_path || '')();
+            if (result?.success === false) {
+                showToast(result.message || (lang === 'fa' ? 'تشخیص مشخصات نماد ناموفق بود.' : 'Could not detect symbol specifications.'));
+                return;
+            }
+            const currentConfig = strategies?.[strategyName]?.config || {};
+            const nextConfig = {
+                ...currentConfig,
+                contract_size: result?.contract_size ?? currentConfig.contract_size,
+                tick_size: result?.tick_size ?? currentConfig.tick_size,
+                spread_divisor: result?.spread_divisor ?? currentConfig.spread_divisor,
+            };
+            if (isBacktest) {
+                setStrategies((previous) => ({
+                    ...previous,
+                    [strategyName]: { ...(previous?.[strategyName] || {}), config: nextConfig },
+                }));
+                await window.eel.update_backtest_strategy_config(strategyName, 'config', {
+                    contract_size: nextConfig.contract_size,
+                    tick_size: nextConfig.tick_size,
+                    spread_divisor: nextConfig.spread_divisor,
+                })();
+            }
+        } catch (error) {
+            showToast(error?.message || (lang === 'fa' ? 'خطا در تشخیص از متاتریدر.' : 'MT5 detection failed.'));
+        }
+    };
+
     const handleDelete = (name, e) => {
         e.stopPropagation();
         setStrategyToDelete(name);
@@ -135,7 +173,9 @@ const StrategyPanel = ({ onUpdateConfig }) => {
         setIsDeletingStrategy(true);
         if(window.eel) {
             try {
-                const newStrategies = await window.eel.remove_strategy(strategyToDelete)();
+                const newStrategies = isBacktest
+                    ? await window.eel.remove_backtest_strategy(strategyToDelete)()
+                    : await window.eel.remove_strategy(strategyToDelete)();
                 if (newStrategies) setStrategies(newStrategies);
             } catch (err) {
                 console.error("Delete Error:", err);
@@ -151,7 +191,9 @@ const StrategyPanel = ({ onUpdateConfig }) => {
     // PARAMETERS LOGIC
     // =========================================================================
     const saveParamToBackend = (strategyName, paramKey, value) => {
-        if(window.eel) window.eel.update_strategy_param(strategyName, paramKey, value)();
+        if (!window.eel) return;
+        if (isBacktest) window.eel.update_backtest_strategy_param(strategyName, paramKey, value)();
+        else window.eel.update_strategy_param(strategyName, paramKey, value)();
     };
 
     const handleParamChange = (strategyName, paramKey, newValue) => {
@@ -202,7 +244,7 @@ const StrategyPanel = ({ onUpdateConfig }) => {
     };
 
     // =========================================================================
-    // CONFIGURATION LOGIC (Super Synced)
+    // Configuration handling
     // =========================================================================
 
     // 1. Local State Update (For Fast Typing - No Backend Call)
@@ -223,7 +265,15 @@ const StrategyPanel = ({ onUpdateConfig }) => {
     const handleConfigChange = (strategyName, configKey, value) => {
         const currentConfig = strategies?.[strategyName]?.config || {};
         const newConfig = { ...currentConfig, [configKey]: value };
-        onUpdateConfig(strategyName, newConfig); // Sends to Python
+        if (isBacktest) {
+            setStrategies((previous) => ({
+                ...previous,
+                [strategyName]: { ...(previous?.[strategyName] || {}), config: newConfig },
+            }));
+            if (window.eel) window.eel.update_backtest_strategy_config(strategyName, 'config', { [configKey]: value })();
+        } else {
+            onUpdateConfig(strategyName, newConfig);
+        }
     };
 
     // 3. Blur Backend Sync (When User Finishes Typing)
@@ -319,12 +369,13 @@ const StrategyPanel = ({ onUpdateConfig }) => {
     // Data Maps
     const strategyList = Object.entries(strategies || {});
 
-    const timeframeOptions = [
+    const allTimeframeOptions = [
         { label: t('timeframe_m1'), value: 'M1' }, { label: t('timeframe_m5'), value: 'M5' },
-        { label: t('timeframe_m15'), value: 'M15' }, { label: t('timeframe_h1'), value: 'H1' },
+        { label: t('timeframe_m15'), value: 'M15' }, { label: t('timeframe_m30'), value: 'M30' }, { label: t('timeframe_h1'), value: 'H1' },
         { label: t('timeframe_h4'), value: 'H4' }, { label: t('timeframe_d1'), value: 'D1' },
         { label: t('timeframe_w1'), value: 'W1' },
     ];
+    const timeframeOptions = isBacktest ? allTimeframeOptions.filter(({ value }) => value !== 'W1') : allTimeframeOptions;
 
     const candleOptions = [
         { label: t('candle_standard'), value: 'STANDARD' },
@@ -348,7 +399,7 @@ const StrategyPanel = ({ onUpdateConfig }) => {
                         <svg className="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
                     </div>
                     <div>
-                        <h1 className="text-white font-bold text-lg tracking-tight">{t('strategy_management')}</h1>
+                        <h1 className="text-white font-bold text-lg tracking-tight">{isBacktest ? (t('bt_strategies') || t('strategy_manager')) : t('strategy_management')}</h1>
                         <p className="text-xs text-zinc-500 font-medium">{t('strategy_config_subtitle')}</p>
                     </div>
                 </div>
@@ -461,18 +512,23 @@ const StrategyPanel = ({ onUpdateConfig }) => {
                                                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                                                     <div>
                                                         <label className="text-[9px] text-zinc-500 font-bold mb-1.5 block">{t('symbol_label') || "SYMBOL"}</label>
-                                                        <input 
-                                                            type="text" 
-                                                            value={config?.symbol || ''} 
-                                                            // Removed .toUpperCase() to allow lower case letters like .o
-                                                            onChange={(e) => handleConfigChangeLocal(name, 'symbol', e.target.value)} 
-                                                            onBlur={(e) => handleConfigBlur(name, 'symbol', e.target.value)}
-                                                            dir="ltr" 
-                                                            className="w-full bg-[#18181b] border border-white/5 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-white font-mono transition-all outline-none hover:border-white/10" 
-                                                        />
+                                                        <div className="flex gap-1.5">
+                                                            <input
+                                                                type="text"
+                                                                value={config?.symbol || ''}
+                                                                onChange={(e) => handleConfigChangeLocal(name, 'symbol', e.target.value)}
+                                                                onBlur={(e) => handleConfigBlur(name, 'symbol', e.target.value)}
+                                                                dir="ltr"
+                                                                className="min-w-0 flex-1 bg-[#18181b] border border-white/5 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-white font-mono transition-all outline-none hover:border-white/10"
+                                                            />
+                                                            {isBacktest && (
+                                                                <button type="button" onClick={() => handleAutoDetect(name, config?.symbol)} title={lang === 'fa' ? 'تشخیص از متاتریدر' : 'Auto-Detect MT5'} className="shrink-0 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 text-[9px] font-bold text-emerald-300 hover:bg-emerald-500/20">
+                                                                    {lang === 'fa' ? 'تشخیص MT5' : 'Detect MT5'}
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    
-                                                    {/* LEVERAGE FIELD */}
+                                                    {!isBacktest && <>
                                                     <PremiumGuard requiredPlan="Pro" className="block">
                                                     <div>
                                                         <label className="text-[9px] text-zinc-500 font-bold mb-1.5 block">{t('strategy_leverage')?.toUpperCase()}</label>
@@ -487,6 +543,7 @@ const StrategyPanel = ({ onUpdateConfig }) => {
                                                         />
                                                     </div>
                                                     </PremiumGuard>
+                                                    </>}
 
                                                     <CustomSelect 
                                                         label={t('timeframe_label') || "TIMEFRAME"}
@@ -494,16 +551,20 @@ const StrategyPanel = ({ onUpdateConfig }) => {
                                                         options={timeframeOptions}
                                                         onChange={(val) => {
                                                             const seconds = timeframeToSeconds[val] || 300;
-                                                            const newConfig = {
-                                                                ...config,
-                                                                timeframe: val,
-                                                                TIMEFRAME_SECONDS: seconds
-                                                            };
-                                                            onUpdateConfig(name, newConfig);
+                                                            const nextConfig = { ...config, timeframe: val, TIMEFRAME_SECONDS: seconds };
+                                                            if (isBacktest) {
+                                                                setStrategies((previous) => ({
+                                                                    ...previous,
+                                                                    [name]: { ...(previous?.[name] || {}), config: nextConfig },
+                                                                }));
+                                                                if (window.eel) window.eel.update_backtest_strategy_config(name, 'config', { timeframe: val, TIMEFRAME_SECONDS: seconds })();
+                                                            } else {
+                                                                onUpdateConfig(name, nextConfig);
+                                                            }
                                                         }}
                                                     />
 
-                                                    <div>
+                                                    {!isBacktest && <div>
                                                         <label className="text-[9px] text-zinc-500 font-bold mb-1.5 block">{t('magic_number')?.toUpperCase()}</label>
                                                         <input 
                                                             type="number" 
@@ -513,7 +574,7 @@ const StrategyPanel = ({ onUpdateConfig }) => {
                                                             dir="ltr" 
                                                             className="w-full bg-[#18181b] border border-white/5 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-blue-400 font-mono transition-all outline-none hover:border-white/10" 
                                                         />
-                                                    </div>
+                                                    </div>}
                                                     
                                                     <CustomSelect 
                                                         label={t('candle_type')?.toUpperCase()}
@@ -521,6 +582,25 @@ const StrategyPanel = ({ onUpdateConfig }) => {
                                                         options={candleOptions}
                                                         onChange={(val) => handleConfigChange(name, 'candle_type', val)}
                                                     />
+                                                    {isBacktest && [
+                                                        ['spread_divisor', t('bt_spread_divisor') || 'Spread Divisor', 100],
+                                                        ['commission_per_lot', t('bt_commission') || 'Commission / Lot ($)', 0],
+                                                        ['contract_size', t('bt_contract_size') || 'Contract Size', 100],
+                                                        ['tick_size', t('bt_tick_size') || 'Tick Size', 0.01],
+                                                        ['lookback', t('bt_lookback_candles') || 'Lookback Candles', 500],
+                                                    ].map(([key, label, fallback]) => (
+                                                        <div key={key}>
+                                                            <label className="text-[9px] text-zinc-500 font-bold mb-1.5 block">{label}</label>
+                                                            <input
+                                                                type="number"
+                                                                value={config?.[key] ?? fallback}
+                                                                onChange={(event) => handleConfigChangeLocal(name, key, event.target.value)}
+                                                                onBlur={(event) => handleConfigBlur(name, key, Number(event.target.value) || fallback)}
+                                                                dir="ltr"
+                                                                className="w-full bg-[#18181b] border border-white/5 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-white font-mono transition-all outline-none hover:border-white/10"
+                                                            />
+                                                        </div>
+                                                    ))}
                                                 </div>
                                                 
                                                 <div className="mt-4">
@@ -565,8 +645,8 @@ const StrategyPanel = ({ onUpdateConfig }) => {
                                             </div>
 
                                             {/* TIME AND CYCLE SECTION */}
-                                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
-                                                <div className="lg:col-span-8">
+                                            <div className={`grid grid-cols-1 ${isBacktest ? '' : 'lg:grid-cols-12'} gap-6 mb-6`}>
+                                                <div className={isBacktest ? 'w-full' : 'lg:col-span-8'}>
                                                     <h5 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>{t('active_trading_hours')}</h5>
                                                     <div className="bg-[#151518] rounded-xl border border-white/5 p-3 space-y-2">
                                                         {killzones.map((zone, idx) => {
@@ -610,7 +690,7 @@ const StrategyPanel = ({ onUpdateConfig }) => {
                                                     </div>
                                                 </div>
                                                 
-                                                <div className="lg:col-span-4">
+                                                {!isBacktest && <div className="lg:col-span-4">
                                                     <h5 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>{t('delay_logic_checks') || "Delay Between Logic Checks"}</h5>
                                                     <div className="bg-[#151518] rounded-xl border border-white/5 p-4 flex flex-col items-center justify-center h-[calc(100%-28px)]">
                                                         <input 
@@ -623,7 +703,7 @@ const StrategyPanel = ({ onUpdateConfig }) => {
                                                         />
                                                         <span className="text-[10px] text-zinc-500 font-bold uppercase">{t('cycle_seconds') || "CYCLE SECONDS"}</span>
                                                     </div>
-                                                </div>
+                                                </div>}
                                             </div>
 
                                         </div>

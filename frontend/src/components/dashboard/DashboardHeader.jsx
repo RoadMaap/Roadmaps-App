@@ -55,25 +55,40 @@ const UpgradeModal = ({ onClose, onUpgrade, onDemo, lang, t }) => {
     ), document.body);
 };
 
-const DashboardHeader = ({ activeTab, userName, strategyCount, hasUpdate, onShowUpdate, onToggleLanguage }) => {
+const DashboardHeader = ({ activeTab, appMode = 'live', userName, strategyCount, hasUpdate, onShowUpdate, onToggleLanguage }) => {
     const { t, lang } = useLanguage();
     const { plan, setPlan } = useAuth();
     const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-    const isBasic = String(plan).toLowerCase() === 'basic';
-    const title = activeTab === 'dashboard'
-        ? userName || 'Trading App'
-        : activeTab === 'education'
-            ? t('ai_builder_title')
-            : activeTab === 'analyze'
-                ? t('chart_analysis') || 'Chart analysis'
-                : t('strategy_management');
-    const subtitle = activeTab === 'dashboard'
-        ? t('real_time_monitoring')
-        : activeTab === 'education'
-            ? t('ai_builder_subtitle')
-            : activeTab === 'analyze'
-                ? t('upload_chart_screenshots')
-                : t('strategy_config_subtitle');
+    const planLabel = String(plan || 'Basic').toLowerCase() === 'advance' ? 'Advance' : String(plan || 'Basic').toLowerCase() === 'pro' ? 'Pro' : 'Basic';
+    const isBacktestMode = appMode === 'backtest';
+    const title = isBacktestMode
+        ? activeTab === 'bt_overview'
+            ? t('bt_overview') || 'Backtest Lab'
+            : activeTab === 'bt_strategies'
+                ? t('bt_strategies') || 'Backtest Strategies'
+                : activeTab === 'bt_analytics'
+                    ? t('bt_analytics') || 'Quant Analytics'
+                    : activeTab === 'bt_plot'
+                        ? t('bt_plot') || 'Chart Plot'
+                        : t('bt_overview') || 'Backtest Lab'
+        : activeTab === 'dashboard'
+            ? userName || 'Trading App'
+            : activeTab === 'education'
+                ? t('ai_builder_title')
+                : activeTab === 'analyze'
+                    ? t('chart_analysis') || 'Chart analysis'
+                    : t('strategy_management');
+    const subtitle = isBacktestMode
+        ? activeTab === 'bt_plot'
+            ? t('bt_plot_subtitle') || 'Candlestick, Indicators & Trade Execution Plot'
+            : t('backtest_lab_subtitle') || 'Live quant simulation and portfolio validation'
+        : activeTab === 'dashboard'
+            ? t('real_time_monitoring')
+            : activeTab === 'education'
+                ? t('ai_builder_subtitle')
+                : activeTab === 'analyze'
+                    ? t('upload_chart_screenshots')
+                    : t('strategy_config_subtitle');
 
     return (
         <header className="sticky top-0 z-20 flex min-h-[76px] shrink-0 items-center justify-between gap-4 bg-[#141318]/95 px-4 backdrop-blur-sm sm:px-6 lg:px-8">
@@ -89,12 +104,12 @@ const DashboardHeader = ({ activeTab, userName, strategyCount, hasUpdate, onShow
                 </div>
                 <button
                     type="button"
-                    onClick={() => isBasic && setIsUpgradeModalOpen(true)}
-                    aria-haspopup={isBasic ? 'dialog' : undefined}
-                    aria-label={t(isBasic ? 'plan_basic' : 'plan_pro')}
-                    className={`inline-flex min-h-10 items-center rounded-md border px-2 text-[10px] font-bold transition sm:px-3 ${isBasic ? 'border-zinc-600/70 bg-zinc-700/30 text-zinc-300 hover:bg-zinc-700/60' : 'border-amber-200/40 bg-amber-200/10 text-amber-200 shadow-[0_0_16px_rgba(251,191,36,0.13)] hover:bg-amber-200/15'}`}
+                    onClick={() => setIsUpgradeModalOpen(true)}
+                    aria-haspopup="dialog"
+                    aria-label={planLabel}
+                    className={`inline-flex min-h-10 items-center rounded-md border px-2 text-[10px] font-bold transition sm:px-3 ${planLabel === 'Basic' ? 'border-zinc-600/70 bg-zinc-700/30 text-zinc-300 hover:bg-zinc-700/60' : 'border-amber-200/40 bg-amber-200/10 text-amber-200 shadow-[0_0_16px_rgba(251,191,36,0.13)] hover:bg-amber-200/15'}`}
                 >
-                    {isBasic ? t('plan_basic') : t('plan_pro')}
+                    {planLabel}
                 </button>
                 {hasUpdate && (
                     <button
@@ -125,12 +140,18 @@ const DashboardHeader = ({ activeTab, userName, strategyCount, hasUpdate, onShow
                 <UpgradeModal
                     onClose={() => setIsUpgradeModalOpen(false)}
                     onDemo={async () => {
-                        setPlan('Pro');
-                        if (window.eel) await window.eel.save_user_config({ plan: 'Pro' })();
+                        const nextPlan = 'Advance';
+                        setPlan(nextPlan);
+                        if (window.eel) await window.eel.save_user_config({ plan: nextPlan })();
+                        if (window.eel) await window.eel.set_user_plan(nextPlan)();
                         setIsUpgradeModalOpen(false);
                     }}
                     onUpgrade={() => {
-                        window.dispatchEvent(new CustomEvent('roadmaps:upgrade-requested', { detail: { requiredPlan: 'Pro' } }));
+                        const nextPlan = 'Advance';
+                        setPlan(nextPlan);
+                        if (window.eel) window.eel.save_user_config({ plan: nextPlan })();
+                        if (window.eel) window.eel.set_user_plan(nextPlan)();
+                        window.dispatchEvent(new CustomEvent('roadmaps:upgrade-requested', { detail: { requiredPlan: 'Advance' } }));
                         setIsUpgradeModalOpen(false);
                     }}
                     lang={lang}

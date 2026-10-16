@@ -3,6 +3,7 @@ import sys
 import subprocess
 import json
 import multiprocessing
+import pickle
 from pathlib import Path
 
 if hasattr(sys, '_MEIPASS'):
@@ -29,13 +30,36 @@ def _run_native_file_dialog_worker(payload_json, result_path):
     Path(result_path).write_text(selected_path or '', encoding='utf-8')
 
 
+def _run_matplotlib_window_worker(payload_path):
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import mplfinance as mpf
+    import matplotlib.pyplot as plt
+
+    with Path(payload_path).open('rb') as payload_file:
+        payload = pickle.load(payload_file)
+    plot_df = payload['plot_df']
+    plot_kwargs = dict(payload['plot_kwargs'])
+    addplots = payload.get('ap', [])
+    if addplots:
+        plot_kwargs['addplot'] = addplots
+    figure, _ = mpf.plot(plot_df, **plot_kwargs)
+    figure.canvas.manager.set_window_title('RoadMaps Backtest Chart')
+    plt.show()
+
+
 if __name__ == '__main__':
     multiprocessing.freeze_support()
     if len(sys.argv) > 1 and sys.argv[1] == '--worker-mode':
-        if len(sys.argv) != 5 or sys.argv[2] != 'native-file-dialog':
-            raise SystemExit(2)
         try:
-            _run_native_file_dialog_worker(sys.argv[3], sys.argv[4])
+            if len(sys.argv) == 5 and sys.argv[2] == 'native-file-dialog':
+                _run_native_file_dialog_worker(sys.argv[3], sys.argv[4])
+            elif len(sys.argv) == 4 and sys.argv[2] == 'matplotlib-window':
+                _run_matplotlib_window_worker(sys.argv[3])
+            else:
+                raise SystemExit(2)
+        except SystemExit:
+            raise
         except Exception:
             raise SystemExit(1)
         raise SystemExit(0)

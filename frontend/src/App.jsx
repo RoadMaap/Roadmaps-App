@@ -3,6 +3,7 @@ import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { EngineStateProvider } from './context/EngineStateContext';
 import { ConfigStateProvider } from './context/ConfigStateContext';
+import { BacktestProvider } from './context/BacktestContext';
 import Login from './auth/Login';
 import Dashboard from './components/dashboard/Dashboard';
 import UpdateProgressScreen from './components/UpdateProgressScreen';
@@ -129,7 +130,9 @@ export default function App() {
       <AuthProvider>
         <EngineStateProvider>
           <ConfigStateProvider>
-            <MainApp />
+            <BacktestProvider>
+              <MainApp />
+            </BacktestProvider>
           </ConfigStateProvider>
         </EngineStateProvider>
       </AuthProvider>
