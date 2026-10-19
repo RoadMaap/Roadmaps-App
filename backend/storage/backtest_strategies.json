@@ -1,27 +1,24 @@
 {
-  "XEN": {
-    "file_path": "C:/Users/alire/OneDrive/Desktop/XEN.py",
+  "Strategy": {
+    "file_path": "C:/Users/alire/OneDrive/Desktop/New Bitmap image.py",
     "params": {
-      "EMA_LEN": 50,
-      "RSI_LEN": 14,
-      "MIN_LOOKBACK": 50,
-      "TP_MULTIPLIER": 2.0,
-      "RSI_BUY_LEVEL": 50.0,
-      "RSI_SELL_LEVEL": 50.0
+      "SUPERT_LEN": 10,
+      "SUPERT_MULT": 3.0,
+      "MIN_LOOKBACK": 15
     },
     "config": {
-      "symbol": "XAUUSD.",
-      "timeframe": "M1",
-      "TIMEFRAME_SECONDS": 60,
+      "symbol": "XAUUSD_o",
+      "timeframe": "M5",
+      "TIMEFRAME_SECONDS": 300,
       "lookback": 500,
-      "spread_divisor": 1000,
+      "spread_divisor": 100.0,
       "commission_per_lot": 0.0,
       "point_value": 1.0,
-      "contract_size": 100,
+      "contract_size": 100.0,
       "tick_size": 0.01,
       "candle_type": "STANDARD",
       "risk_mode": "fixed_usd",
-      "risk_value": 100,
+      "risk_value": 100.0,
       "allowed_days": [
         0,
         1,
@@ -29,9 +26,7 @@
         3,
         4
       ],
-      "killzones": [
-        "03:00-23:00"
-      ],
+      "killzones": [],
       "leverage": ""
     }
   }

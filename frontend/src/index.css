@@ -1,3 +1,5 @@
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/vazirmatn/wght.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -54,7 +56,7 @@ body {
     animation: gradientBG 20s ease infinite;
     background-color: var(--bg-page);
     color: var(--text-primary);
-    font-family: 'Vazirmatn', sans-serif;
+    font-family: 'Vazirmatn Variable', sans-serif;
 }
 
 html[lang="en"] body,
@@ -86,6 +88,11 @@ input[type=number] {
                       linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
     mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
     -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+}
+
+.login-grid-mask {
+    mask-image: radial-gradient(500px circle at center, white, transparent);
+    -webkit-mask-image: radial-gradient(500px circle at center, white, transparent);
 }
 
 .glass-card {
@@ -157,3 +164,33 @@ input[type=number] {
 }
 .stroke-up { stroke: var(--primary); }
 .stroke-down { stroke: var(--error); }
+
+@layer base {
+  .theme {
+        --ease-lift: cubic-bezier(0.4, 0, 0.2, 1);
+        --duration-lift: 320ms;
+        --duration-lift-press: 120ms;
+    }
+}
+
+@utility hover-lift {
+    --lift: 2px;
+    transition-property: translate, scale, box-shadow, background-color, border-color, border-radius, color, opacity;
+    transition-duration: var(--duration-lift);
+    transition-timing-function: var(--ease-lift);
+  @media (hover: hover) {}
+  @media (hover:hover: hover) {
+    translate: 0 calc(var(--lift) * -1);
+    }
+  &:active {
+    translate: 0 0;
+    transition-duration: var(--duration-lift-press);
+    }
+  @media (prefers-reduced-motion: reduce) {
+    transition-property: background-color, border-color, color, opacity;
+    }
+  @media (prefers-reduced-motion:hover, &:active: reduce) {
+    translate: none;
+    scale: none;
+    }
+}
