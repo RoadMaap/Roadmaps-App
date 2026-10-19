@@ -5,7 +5,15 @@
     <link rel="icon" type="image/x-icon" href="/icons/app.ico?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RoadMaps App</title>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet">
+    <script>
+      try {
+        const savedLanguage = localStorage.getItem('app_lang');
+        if (savedLanguage === 'fa' || savedLanguage === 'en') {
+          document.documentElement.lang = savedLanguage;
+          document.documentElement.dir = savedLanguage === 'fa' ? 'rtl' : 'ltr';
+        }
+      } catch {}
+    </script>
     <script type="text/javascript" src="eel.js"></script>
   </head>
   <body class="bg-[var(--bg-page)] text-[var(--text-primary)] overflow-hidden">
