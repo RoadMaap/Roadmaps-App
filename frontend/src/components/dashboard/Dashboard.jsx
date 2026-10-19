@@ -177,7 +177,6 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
                         setActiveTab(tab);
                         setCurrentTab(tab);
                     }}
-                    onModeChange={(nextMode) => setAppMode(nextMode)}
                 />
                 <main ref={mainContentRef} className="relative z-10 flex h-full min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] bg-[#141318] custom-scroll">
                     <div
@@ -195,6 +194,7 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
                         userName={userName}
                         strategyCount={strategyCount}
                         hasUpdate={Boolean(updateInfo)}
+                        onModeChange={setAppMode}
                         onShowUpdate={() => setShowOptionalModal(true)}
                         onToggleLanguage={toggleLanguage}
                     />

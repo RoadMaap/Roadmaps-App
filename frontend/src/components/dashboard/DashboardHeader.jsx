@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
+import { Globe } from '../animate-ui/icons/globe';
+import { AnimateIcon } from '@animate-ui/react/icons';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '../ui/hover-card';
 
 const UpgradeModal = ({ onClose, onUpgrade, onDemo, lang, t }) => {
     const features = [
@@ -55,7 +58,7 @@ const UpgradeModal = ({ onClose, onUpgrade, onDemo, lang, t }) => {
     ), document.body);
 };
 
-const DashboardHeader = ({ activeTab, appMode = 'live', userName, strategyCount, hasUpdate, onShowUpdate, onToggleLanguage }) => {
+const DashboardHeader = ({ activeTab, appMode = 'live', userName, strategyCount, hasUpdate, onShowUpdate, onToggleLanguage, onModeChange }) => {
     const { t, lang } = useLanguage();
     const { plan, setPlan } = useAuth();
     const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
@@ -97,6 +100,13 @@ const DashboardHeader = ({ activeTab, appMode = 'live', userName, strategyCount,
                 <p className="mt-1 truncate text-xs font-medium text-[#7A797E]">{subtitle}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                <div role="group" aria-label={lang === 'fa' ? 'حالت برنامه' : 'App mode'} dir="ltr" className="flex h-10 items-center rounded-md border border-[#2F2E35] bg-[#1E1D22] p-1">
+                    {['live', 'backtest'].map((mode) => (
+                        <button key={mode} type="button" onClick={() => onModeChange?.(mode)} aria-pressed={appMode === mode} className={`h-full rounded px-2 text-[10px] font-bold uppercase transition sm:px-2.5 ${appMode === mode ? 'bg-[#f28c45] text-[#1d1a12]' : 'text-zinc-400 hover:text-white'}`}>
+                            {mode === 'live' ? 'LIVE' : 'BACKTEST'}
+                        </button>
+                    ))}
+                </div>
                 <div className="flex min-h-10 items-center gap-2 rounded-md border border-[#2F2E35] bg-[#1E1D22] px-2 sm:gap-3 sm:px-3">
                     <span className="hidden text-[10px] font-semibold uppercase text-[#7A797E] lg:inline">{t('active_strategies')}</span>
                     <span className="h-4 w-px bg-[#2F2E35]" aria-hidden="true" />
@@ -123,18 +133,26 @@ const DashboardHeader = ({ activeTab, appMode = 'live', userName, strategyCount,
                         <span className="hidden sm:inline">{t('update_available')}</span>
                     </button>
                 )}
-                <button
-                    type="button"
-                    onClick={onToggleLanguage}
-                    className="flex h-10 w-10 items-center justify-center rounded-md border border-[#2F2E35] bg-[#1E1D22] text-[#F28C45] transition-colors hover:bg-[#2A292F] hover:text-[#FCFCFD] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#F28C45]"
-                    title={lang === 'fa' ? 'Switch to English' : 'تغییر زبان به فارسی'}
-                    aria-label={lang === 'fa' ? 'Switch to English' : 'تغییر زبان به فارسی'}
-                >
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                        <circle cx="12" cy="12" r="9" strokeWidth="1.7" />
-                        <path strokeLinecap="round" strokeWidth="1.7" d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
-                    </svg>
-                </button>
+                <HoverCard>
+                    <HoverCardTrigger
+                        delay={180}
+                        render={
+                            <button
+                                type="button"
+                                onClick={onToggleLanguage}
+                                className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-[#BDBABD] transition-colors hover:bg-transparent hover:text-[#FCFCFD]"
+                                aria-label={lang === 'fa' ? 'تغییر زبان به انگلیسی' : 'Switch to Persian'}
+                            />
+                        }
+                    >
+                        <AnimateIcon animateOnHover>
+                            <Globe size={16} className="text-[#F28C45]" />
+                        </AnimateIcon>
+                    </HoverCardTrigger>
+                    <HoverCardContent side="bottom" align="center" className="login-language-hover-card w-auto max-w-[220px] border border-[#2F2E35] bg-[#1A191E] px-3 py-2 text-xs text-[#FCFCFD] shadow-lg">
+                        {lang === 'fa' ? 'تغییر زبان به انگلیسی' : 'Switch to Persian'}
+                    </HoverCardContent>
+                </HoverCard>
             </div>
             {isUpgradeModalOpen && (
                 <UpgradeModal

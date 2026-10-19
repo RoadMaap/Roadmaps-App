@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover
 from security.system_shield import SystemShield
 
 try:
-    from security.desktop_auth import start_web_auth_flow
+    from security.desktop_auth import cancel_web_auth_flow, start_web_auth_flow
 except ImportError as e:
     print(f"⚠️ Security module import skipped: {e}")
 
@@ -105,6 +105,12 @@ def require_plan(required_plan):
     return decorator
 
 @eel.expose
+def cancel_login():
+    """Requests cancellation of the active desktop authentication flow."""
+    return cancel_web_auth_flow()
+
+
+@eel.expose
 def attempt_login():
     """
     Exposes the web authentication flow to the Eel frontend.
@@ -113,6 +119,13 @@ def attempt_login():
     print("🌐 Waiting for Web Authentication...")
     try:
         auth_result = start_web_auth_flow()
+
+        if auth_result.get("cancelled"):
+            return {
+                "success": False,
+                "cancelled": True,
+                "message": auth_result.get("message", "Login cancelled."),
+            }
 
         if auth_result.get("success") and auth_result.get("user_data"):
             user_data = auth_result["user_data"]

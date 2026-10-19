@@ -44,6 +44,12 @@ PKCE_TOKEN_URL = f"{BACKEND_BASE_URL}/api/v1/users/auth/pkce/token/"
 # Local loopback callback port for the desktop PKCE browser redirect flow.
 # Supports both project-specific and generic env variables for compatibility.
 LOCAL_AUTH_PORT = int(os.getenv("ROADMAPS_LOCAL_AUTH_PORT") or os.getenv("LOCAL_AUTH_PORT") or "8765")
+_AUTH_CANCEL_EVENT = threading.Event()
+
+
+def cancel_web_auth_flow():
+    _AUTH_CANCEL_EVENT.set()
+    return {"success": True}
 
 
 def _open_private_browser(login_url):
@@ -95,10 +101,22 @@ def _open_private_browser(login_url):
     raise RuntimeError('No supported browser was found for private login. Install Edge, Chrome, or Firefox.')
 
 
-def _close_private_browser(process, profile_dir):
+def _close_private_browser(process, profile_dir, force=False):
     """Stop the isolated browser process and remove its one-time profile."""
     try:
-        process.wait(timeout=3)
+        if force and process.poll() is None:
+            if os.name == 'nt':
+                subprocess.run(
+                    ['taskkill', '/F', '/T', '/PID', str(process.pid)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+                )
+            else:
+                process.terminate()
+        else:
+            process.wait(timeout=3)
     except subprocess.TimeoutExpired:
         if os.name == 'nt':
             subprocess.run(
@@ -210,8 +228,10 @@ class DesktopAuthClient:
         code_challenge = base64.urlsafe_b64encode(digest).rstrip(b'=').decode('ascii')
         return code_verifier, code_challenge
 
-    def wait_for_login(self, timeout_seconds=180):
+    def wait_for_login(self, timeout_seconds=180, cancel_event=None):
         """Initiates flow, waits for user login, and returns the complete token payload."""
+        if cancel_event is None:
+            cancel_event = _AUTH_CANCEL_EVENT
         socketserver.TCPServer.allow_reuse_address = True
 
         try:
@@ -243,6 +263,10 @@ class DesktopAuthClient:
             httpd.server_close()
             return False, "Failed to decode backend JSON response.", None
 
+        if cancel_event.is_set():
+            httpd.server_close()
+            return False, "Login cancelled.", None
+
         login_url = session_data.get('login_url')
         self.device_state = session_data.get('state')
 
@@ -258,6 +282,11 @@ class DesktopAuthClient:
             httpd.server_close()
             return False, f"Failed to launch browser: {exc}", None
 
+        if cancel_event.is_set():
+            httpd.server_close()
+            _close_private_browser(browser_process, browser_profile, force=True)
+            return False, "Login cancelled.", None
+
         # 3. Spin up local server listener
         server_thread = threading.Thread(target=httpd.serve_forever)
         server_thread.daemon = True
@@ -266,6 +295,11 @@ class DesktopAuthClient:
         # 4. Wait for loopback code
         start_time = time.time()
         while getattr(httpd, 'received_code', None) is None:
+            if cancel_event.is_set():
+                httpd.shutdown()
+                httpd.server_close()
+                _close_private_browser(browser_process, browser_profile, force=True)
+                return False, "Login cancelled.", None
             if time.time() - start_time > timeout_seconds:
                 httpd.shutdown()
                 httpd.server_close()
@@ -280,6 +314,9 @@ class DesktopAuthClient:
         httpd.server_close()
         _close_private_browser(browser_process, browser_profile)
 
+        if cancel_event.is_set():
+            return False, "Login cancelled.", None
+
         # 5. Security Check: Validate state parameter to prevent CSRF attacks
         if received_state != self.device_state:
             return False, "Security error: State mismatch. Authentication aborted.", None
@@ -293,6 +330,9 @@ class DesktopAuthClient:
             token_resp = self.session.post(PKCE_TOKEN_URL, json=exchange_payload, timeout=self.timeout)
             token_resp.raise_for_status()
             data = token_resp.json()
+
+            if cancel_event.is_set():
+                return False, "Login cancelled.", None
 
             # The PKCE endpoint returns tokens only; fetch the authenticated profile separately.
             tokens = data.get('tokens')
@@ -328,6 +368,9 @@ class DesktopAuthClient:
             if user:
                 tokens = {**tokens, 'user': user}
 
+            if cancel_event.is_set():
+                return False, "Login cancelled.", None
+
             return True, "Authentication successful.", tokens
 
         except RequestException as exc:
@@ -338,11 +381,16 @@ class DesktopAuthClient:
 
 def start_web_auth_flow():
     """Entry point to execute desktop authentication flow and return user data."""
+    _AUTH_CANCEL_EVENT.clear()
     client = DesktopAuthClient()
-    success, message, tokens_data = client.wait_for_login(timeout_seconds=180)
+    success, message, tokens_data = client.wait_for_login(
+        timeout_seconds=180,
+        cancel_event=_AUTH_CANCEL_EVENT,
+    )
     
     return {
         "success": success,
         "message": message,
-        "user_data": tokens_data  # Contains access, refresh, email, username, etc.
+        "user_data": tokens_data,  # Contains access, refresh, email, username, etc.
+        "cancelled": not success and _AUTH_CANCEL_EVENT.is_set(),
     }

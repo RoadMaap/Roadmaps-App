@@ -20,7 +20,7 @@ eel = {
     },
 
     // These get dynamically added by library when file is served
-    _py_functions: ['get_hwid_frontend', 'attempt_login', 'get_initial_data', 'choose_mt5_path', 'save_user_config', 'start_robot', 'stop_robot'],
+    _py_functions: ['get_hwid_frontend', 'attempt_login', 'cancel_login', 'get_initial_data', 'choose_mt5_path', 'save_user_config', 'start_robot', 'stop_robot'],
     _start_geometry: {"default": {"size": [1000, 850], "position": null}, "pages": {}},
 
     _guid: ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>

@@ -6,13 +6,12 @@ import widget5Linear from '@iconify-icons/solar/widget-5-linear';
 import solarInfo from '@iconify-json/solar/info.json';
 import { CandlestickChart } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import MorphIcon from '../smoothui/morph-icon';
 
-const Sidebar = ({ status, activeTab, appMode = 'live', hasUnreadBacktestResult = false, onTabChange, onModeChange }) => {
+const Sidebar = ({ status, activeTab, appMode = 'live', hasUnreadBacktestResult = false, onTabChange }) => {
     const { t, lang } = useLanguage();
     const markerAnimationRef = useRef(null);
-    const [isCollapsed, setIsCollapsed] = useState(() => (
-        typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
-    ));
+    const [isCollapsed, setIsCollapsed] = useState(true);
     const isRtl = lang === 'fa';
 
     const connectionState = status === 'Running'
@@ -106,33 +105,18 @@ const Sidebar = ({ status, activeTab, appMode = 'live', hasUnreadBacktestResult 
     return (
         <aside className={`relative z-30 flex h-full shrink-0 flex-col overflow-hidden border-e border-[#2F2E35] bg-[#141318] font-sans text-[#FCFCFD] transition-[width] duration-300 ${isCollapsed ? 'w-[76px]' : 'w-[260px]'}`} dir={isRtl ? 'rtl' : 'ltr'}>
             <div className="flex min-h-0 flex-1 flex-col p-4">
-                <div dir={isRtl ? 'rtl' : 'ltr'} className="flex flex-col items-start px-0 pb-2 pt-0">
-                    <div className="ms-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-lg">
-                        <img src="/logo.png" alt="RoadMaps Logo" className="-translate-y-0.5 h-full w-full object-cover" />
-                    </div>
-                </div>
-
-                <div className="mt-3 rounded-xl border border-[#2F2E35] bg-[#1B1A1F] p-1">
-                    <div className="grid grid-cols-2 gap-1">
-                        {['live', 'backtest'].map((mode) => {
-                            const active = appMode === mode;
-                            return (
-                                <button key={mode} type="button" onClick={() => onModeChange?.(mode)} className={`rounded-lg px-2 py-2 text-[11px] font-bold uppercase tracking-[0.18em] transition ${active ? 'bg-[#f28c45] text-[#1d1a12]' : 'text-zinc-400 hover:text-white'}`}>
-                                    {mode === 'live' ? 'LIVE' : 'BACKTEST'}
-                                </button>
-                            );
-                        })}
+                <div dir={isRtl ? 'rtl' : 'ltr'} className="flex items-center justify-start pb-2 pt-0">
+                    <div className="ms-1.5 h-8 w-8 shrink-0 overflow-hidden rounded-lg">
+                        <img src="/img/trading-app-logo.png" alt="Trading App Logo" className="h-full w-full object-contain" />
                     </div>
                 </div>
 
                 <nav className="mt-3 flex-1" aria-label={isRtl ? 'منوی اصلی' : 'Main navigation'}>
-                    <div dir={isRtl ? 'rtl' : 'ltr'} className={`mb-2 flex h-8 items-center border-b border-[#2F2E35] ${isCollapsed ? 'justify-start' : 'justify-between'}`}>
-                        <button type="button" onClick={() => setIsCollapsed((collapsed) => !collapsed)} aria-label={isCollapsed ? (isRtl ? 'باز کردن نوار کناری' : 'Expand sidebar') : (isRtl ? 'بستن نوار کناری' : 'Collapse sidebar')} aria-expanded={!isCollapsed} title={isCollapsed ? (isRtl ? 'باز کردن نوار کناری' : 'Expand sidebar') : (isRtl ? 'بستن نوار کناری' : 'Collapse sidebar')} className="ms-1.5 -translate-y-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#7A797E] transition-colors hover:text-[#F28C45] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#F28C45]">
-                            <svg className={`h-4 w-4 transition-transform duration-300 ${isCollapsed ? (isRtl ? 'rotate-180' : '') : (isRtl ? '' : 'rotate-180')}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="m9 18 6-6-6-6" />
-                            </svg>
+                    <div dir={isRtl ? 'rtl' : 'ltr'} className="mb-2 flex h-8 items-center justify-between border-b border-[#2F2E35]">
+                        <button type="button" onClick={() => setIsCollapsed((collapsed) => !collapsed)} aria-label={isCollapsed ? (isRtl ? 'باز کردن نوار کناری' : 'Expand sidebar') : (isRtl ? 'بستن نوار کناری' : 'Collapse sidebar')} aria-expanded={!isCollapsed} title={isCollapsed ? (isRtl ? 'باز کردن نوار کناری' : 'Expand sidebar') : (isRtl ? 'بستن نوار کناری' : 'Collapse sidebar')} className="ms-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#7A797E] transition-colors hover:text-[#F28C45] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#F28C45]">
+                            <MorphIcon variant="sidebar" active={!isCollapsed} size={18} />
                         </button>
-                        <p dir={isRtl ? 'rtl' : 'ltr'} className={`ms-2 text-[10px] font-semibold uppercase text-[#7A797E] transition-colors hover:text-[#F28C45] ${isCollapsed ? 'hidden' : ''}`}>
+                        <p dir={isRtl ? 'rtl' : 'ltr'} className={`text-[10px] font-semibold uppercase text-[#7A797E] transition-colors hover:text-[#F28C45] ${isCollapsed ? 'hidden' : ''}`}>
                             {t('menu') || (isRtl ? 'منو' : 'Menu')}
                         </p>
                     </div>
