@@ -45,9 +45,13 @@ Data & Config Files (JSON)
 !frontend/.eslintrc.json
 
 # Local backtest data, strategy settings, and generated reports
-/backend/storage/backtest_data/*.csv
+/backend/storage/backtest_data/
+/backend/storage/backtest_settings.json
 /backend/storage/backtest_strategies.json
 /backend/storage/reports/
+/.roadmaps_app/update_log.json
+/Reports/
+/report.html
 
 # Build and executable artifacts
 *.exe
