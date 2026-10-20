@@ -145,10 +145,13 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
         }
     };
 
-    function update_dashboard(profit, equity, positions) {
+    function update_dashboard(profit, equity, positions, brokerTimeMs) {
         const nextProfit = parseFloat(profit) || 0;
         const nextEquity = parseFloat(equity) || 0;
-        setLiveData({ profit: nextProfit, equity: nextEquity, positions: positions || 0 });
+        const nextBrokerTimeMs = brokerTimeMs != null && Number.isFinite(Number(brokerTimeMs))
+            ? Number(brokerTimeMs)
+            : null;
+        setLiveData({ profit: nextProfit, equity: nextEquity, positions: positions || 0, brokerTimeMs: nextBrokerTimeMs });
     }
 
     const handleStrategyConfigUpdate = (strategyName, newConfig) => {

@@ -25,6 +25,7 @@
     "@magicui": "https://magicui.design/r/{name}",
     "@smoothui": "https://smoothui.dev/r/{name}.json",
     "@animate-ui": "https://animate-ui.com/r/{name}.json",
-    "@kibo-ui": "https://www.kibo-ui.com/r/{name}.json"
+    "@kibo-ui": "https://www.kibo-ui.com/r/{name}.json",
+    "@ssych": "https://ui.ssych.com/r/{name}.json"
   }
 }

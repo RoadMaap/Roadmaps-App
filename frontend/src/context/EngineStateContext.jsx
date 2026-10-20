@@ -22,7 +22,7 @@ const EngineLogsProvider = ({ children }) => {
 };
 
 const EngineMetricsProvider = ({ children }) => {
-    const [liveData, setLiveData] = useState({ profit: 0, equity: 0, positions: 0 });
+    const [liveData, setLiveData] = useState({ profit: 0, equity: 0, positions: 0, brokerTimeMs: null });
     const actions = useMemo(() => ({ setLiveData }), []);
 
     return (
