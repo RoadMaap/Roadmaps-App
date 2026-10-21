@@ -34,10 +34,10 @@ const NetProfit = ({ profit, brokerTimeMs }) => {
 
     return (
         <section
-            className="h-full w-full min-w-0 rounded-lg border border-[#2F2E35] bg-[#1A191E] p-4 sm:p-6"
+            className="h-full w-full min-w-0 rounded-lg border border-[#2F2E35] bg-[#1A191E] p-4 sm:p-6 sm:pb-5"
             aria-label={`${t('net_profit_today')}: $${profit.toFixed(2)}`}
         >
-            <div className="w-full min-w-0">
+            <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
                 <DottedAreaChart
                     name={t('net_profit_today')}
                     symbol="USD"
@@ -51,6 +51,7 @@ const NetProfit = ({ profit, brokerTimeMs }) => {
                     showHeader
                     showChange={false}
                     showTimeAxis={false}
+                    className="mx-auto flex h-full min-h-0 w-full max-w-[600px] flex-col"
                     ariaLabel={`${t('net_profit_today')}: $${profit.toFixed(2)}`}
                 />
             </div>

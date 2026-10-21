@@ -187,7 +187,7 @@ export function DottedAreaChart({
   const openHidden = hover != null && Math.abs(openY - tagY) < 13
 
   return (
-    <div ref={rootRef} className={cn("w-[820px] max-w-full tabular-nums", className)}>
+    <div ref={rootRef} className={cn("flex w-[820px] max-w-full tabular-nums", className)}>
       {/* the header, three tiers (spec 14.1); it swaps only when a scrub starts or ends, and follows the pointer in place */}
       {showHeader && (
         <>
@@ -223,7 +223,7 @@ export function DottedAreaChart({
         width={W}
         height={H}
         viewBox={`0 0 ${W} ${H}`}
-        className="mt-4 block h-auto w-full cursor-crosshair touch-none overflow-visible"
+        className="mt-auto block h-auto w-full cursor-crosshair touch-none overflow-visible"
         onPointerMove={onMove}
         onPointerLeave={() => setHover(null)}
         role="img"
