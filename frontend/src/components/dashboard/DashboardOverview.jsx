@@ -15,7 +15,7 @@ const DashboardOverview = ({ initialData, nextNews, onToggleEngine }) => {
 
     return (
         <>
-            <div className="dashboard-overview-grid grid grid-cols-1 gap-4 min-[560px]:grid-cols-[1fr_1fr] min-[560px]:grid-rows-[156px_minmax(260px,auto)] lg:grid-cols-[1fr_1.5fr] lg:grid-rows-[156px_156px] min-[1400px]:grid-cols-[360px_680px_calc((100%_-_176px)_/_6_+_24px)] min-[1400px]:grid-rows-[156px_156px] min-[1400px]:justify-end" dir="ltr">
+            <div className="dashboard-overview-grid grid grid-cols-1 gap-4 min-[560px]:grid-cols-[1fr_1fr] min-[560px]:grid-rows-[156px_minmax(260px,auto)] lg:grid-cols-[1fr_1.5fr] lg:grid-rows-[156px_156px] min-[1400px]:grid-rows-[156px_156px] min-[1400px]:justify-end" dir="ltr">
                 <AccountBalance className="min-[560px]:col-start-1 min-[560px]:row-start-1" />
 
                 <div className="min-w-0 min-[560px]:col-span-2 min-[560px]:row-start-2 lg:col-span-1 lg:col-start-2 lg:row-span-2 lg:row-start-1" dir={lang === 'fa' ? 'rtl' : 'ltr'}>

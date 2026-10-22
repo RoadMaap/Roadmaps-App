@@ -12,6 +12,7 @@ const NetProfit = ({ profit, brokerTimeMs }) => {
         time: Number.isFinite(brokerTimeMs) ? brokerTimeMs : Date.now(),
         value: profit,
     }]);
+    const formattedProfit = profit.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
     useEffect(() => {
         latestData.current = { profit, brokerTimeMs };
@@ -34,10 +35,17 @@ const NetProfit = ({ profit, brokerTimeMs }) => {
 
     return (
         <section
-            className="mx-auto h-full w-full max-w-[760px] min-w-0 rounded-lg border border-[#2F2E35] bg-[#1A191E] p-4 sm:p-6 sm:pb-5"
+            className="mx-auto flex h-full w-full max-w-[760px] min-w-0 flex-col rounded-[10px] border-2 border-[#1B1B1B] bg-[#121212] p-1.5"
             aria-label={`${t('net_profit_today')}: $${profit.toFixed(2)}`}
         >
-            <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
+            <div className="relative z-10 flex h-8 shrink-0 items-center justify-between gap-2 px-1.5">
+                <h3 className="min-w-0 truncate text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500">{t('net_profit_today')}</h3>
+                <div className="flex shrink-0 items-baseline gap-2 text-[9px]">
+                    <span className="font-semibold text-foreground/90">{formattedProfit}</span>
+                    <span className="font-medium text-foreground/60">USD</span>
+                </div>
+            </div>
+            <div className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center overflow-hidden rounded-[7px] border-2 border-[#1B1B1B] bg-[#090909] px-2">
                 <DottedAreaChart
                     name={t('net_profit_today')}
                     symbol="USD"
@@ -48,7 +56,7 @@ const NetProfit = ({ profit, brokerTimeMs }) => {
                     timeWindowSize={HISTORY_SIZE}
                     referenceValue={0}
                     currentValue={profit}
-                    showHeader
+                    showHeader={false}
                     showChange={false}
                     showTimeAxis={false}
                     className="mx-auto flex h-full min-h-0 w-full max-w-[600px] flex-col"

@@ -7,11 +7,14 @@ import solarInfo from '@iconify-json/solar/info.json';
 import { CandlestickChart } from 'lucide-react';
 import { AnimateIcon } from '@animate-ui/react/icons';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '../ui/hover-card';
 import MorphIcon from '../smoothui/morph-icon';
+import { ThemeSwitcher } from '../kibo-ui/theme-switcher';
 
 const Sidebar = ({ status, activeTab, appMode = 'live', hasUnreadBacktestResult = false, onTabChange }) => {
     const { t, lang } = useLanguage();
+    const { theme, setTheme } = useTheme();
     const markerAnimationRef = useRef(null);
     const [isCollapsed, setIsCollapsed] = useState(true);
     const isRtl = lang === 'fa';
@@ -142,10 +145,11 @@ const Sidebar = ({ status, activeTab, appMode = 'live', hasUnreadBacktestResult 
     return (
         <aside className={`absolute inset-y-0 start-0 z-30 flex h-full shrink-0 flex-col overflow-hidden border-e border-[#2F2E35] bg-[#141318] font-sans text-[#FCFCFD] transition-[width] duration-300 ${isCollapsed ? 'w-[76px]' : 'w-[260px]'}`} dir={isRtl ? 'rtl' : 'ltr'}>
             <div className="flex min-h-0 flex-1 flex-col p-4">
-                <div dir={isRtl ? 'rtl' : 'ltr'} className="flex items-center justify-start pb-2 pt-0">
+                <div dir={isRtl ? 'rtl' : 'ltr'} className={`flex items-center pb-2 pt-0 ${isCollapsed ? 'justify-start' : 'justify-between'}`}>
                     <div className="ms-1.5 h-8 w-8 shrink-0 overflow-hidden rounded-lg">
                         <img src="/img/trading-app-logo.png" alt="Trading App Logo" className="h-full w-full object-contain" />
                     </div>
+                    {!isCollapsed && <ThemeSwitcher value={theme} onChange={setTheme} className="shrink-0" />}
                 </div>
 
                 <nav className="mt-3 flex-1" aria-label={isRtl ? 'منوی اصلی' : 'Main navigation'}>

@@ -99,6 +99,8 @@ export function DottedAreaChart({
   referenceValue,
   currentValue,
   showHeader = true,
+  showName = true,
+  showSymbol = true,
   showChange = true,
   showTimeAxis = true,
   ariaLabel,
@@ -126,7 +128,7 @@ export function DottedAreaChart({
     return () => observer.disconnect()
   }, [])
 
-  const { data, n, min, max, x, y, chartY, line, area, windowSize, windowStart, windowEnd } = useMemo(() => {
+  const { data, n, min, max, x, chartY, line, area, windowSize, windowStart, windowEnd } = useMemo(() => {
     const data = prices.length ? prices : [0]
     const n = data.length
     const windowSize = Math.max(timeWindowSize || n, 2)
@@ -144,7 +146,6 @@ export function DottedAreaChart({
       const position = (time - windowStart) / (windowEnd - windowStart || 1)
       return Math.max(0, Math.min(1, position)) * (W - PAD.r)
     }
-    const y = (v) => PAD.t + (1 - (v - min) / (max - min || 1)) * (H - PAD.t - PAD.b)
     const chartY = (v) => {
       const delta = v - open
       const dataRange = delta >= 0 ? max - open : open - min
@@ -153,7 +154,7 @@ export function DottedAreaChart({
     }
     const line = data.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${chartY(v).toFixed(1)}`).join(" ")
     const area = `${line} L${x(n - 1).toFixed(1)},${H - PAD.b} L0,${H - PAD.b} Z`
-    return { data, n, min, max, x, y, chartY, line, area, windowSize, windowStart, windowEnd }
+    return { data, n, min, max, x, chartY, line, area, windowSize, windowStart, windowEnd }
   }, [prices, sampleTimes, start, interval, timeWindowSize, referenceValue])
 
   const open = referenceValue ?? data[0]
@@ -175,7 +176,11 @@ export function DottedAreaChart({
     setHover(nearestIndex)
   }
 
-  const ticks = [0.15, 0.5, 0.85].map((f) => max - f * (max - min))
+  const dataMin = Math.min(open, ...data)
+  const dataMax = Math.max(open, ...data)
+  const axisMin = dataMin === dataMax ? open - 1 : dataMin
+  const axisMax = dataMin === dataMax ? open + 1 : dataMax
+  const ticks = [axisMax, (axisMin + axisMax) / 2, axisMin]
   const span = Math.max(interval, windowEnd - windowStart)
   const time = (i) => sampleTimes?.[i] ?? start + i * interval
   /* even steps of the bar count, so a day of 96 quarter hours reads 00:00, 06:00, 12:00, 18:00 */
@@ -183,7 +188,7 @@ export function DottedAreaChart({
   const [whole, cents] = usd(at).split(".")
   /* the pointed tag, and the open's name on the axis, which steps aside under it */
   const tagY = hover == null ? 0 : Math.max(PAD.t + 8, Math.min(H - PAD.b - 8, chartY(at)))
-  const openY = (y(ticks[0]) + H - PAD.b) / 2
+  const openY = chartY(open)
   const openHidden = hover != null && Math.abs(openY - tagY) < 13
 
   return (
@@ -192,9 +197,9 @@ export function DottedAreaChart({
       {showHeader && (
         <>
           <div className="mb-3 flex items-baseline justify-between gap-3 text-[12px]">
-            <span className="truncate text-foreground/45">{name}</span>
-            <div className="flex shrink-0 items-baseline gap-2">
-              <span className="font-medium text-foreground/60">{symbol}</span>
+            {showName && <span className="truncate text-foreground/45">{name}</span>}
+            <div className={`flex shrink-0 items-baseline gap-2 ${showName ? '' : 'ms-auto'}`}>
+              {showSymbol && <span className="font-medium text-foreground/60">{symbol}</span>}
               <div role="status">
                 <LiveFigure intent={hover == null ? null : "scrub"}>
                   <p className="m-0 text-[12px] font-semibold leading-none text-foreground/90">
@@ -262,7 +267,7 @@ export function DottedAreaChart({
 
         {/* gridlines and right-edge price ticks; a tick steps aside for the open's name or the pointed tag */}
         {ticks.map((v, i) => {
-          const tickY = i === 1 ? openY : i === ticks.length - 1 ? H - PAD.b : y(v)
+          const tickY = chartY(v)
           const under = Math.abs(tickY - openY) < 11 || (hover != null && Math.abs(tickY - tagY) < 12)
           const isOpenTick = Math.abs(v - open) < 1e-9
           return (
@@ -270,7 +275,7 @@ export function DottedAreaChart({
               <motion.line
                 x1={0}
                 x2={W - PAD.r}
-                stroke={v >= open ? GREEN : RED}
+                stroke={i === 0 ? GREEN : i === ticks.length - 1 && v < open ? RED : INK}
                 strokeOpacity={isOpenTick ? 0 : 0.35}
                 strokeWidth={1.2}
                 initial={false}

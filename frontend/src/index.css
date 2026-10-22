@@ -258,8 +258,15 @@ input[type=number] {
     }
 }
 
-@media (min-width: 1024px) and (max-height: 960px) {
+@media (min-width: 1024px) and (max-width: 1399px) and (max-height: 960px) {
     main .dashboard-overview-grid {
         grid-template-rows: 140px 140px;
+    }
+}
+
+@media (min-width: 1400px) {
+    main .dashboard-overview-grid {
+        grid-template-columns: 360px minmax(0, min(680px, calc(100% - 752px))) 360px;
+        min-height: 328px;
     }
 }

@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { EngineStateProvider } from './context/EngineStateContext';
 import { ConfigStateProvider } from './context/ConfigStateContext';
 import { BacktestProvider } from './context/BacktestContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Login from './auth/Login';
 import Dashboard from './components/dashboard/Dashboard';
 import UpdateProgressScreen from './components/UpdateProgressScreen';
@@ -126,16 +127,18 @@ function MainApp() {
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <EngineStateProvider>
-          <ConfigStateProvider>
-            <BacktestProvider>
-              <MainApp />
-            </BacktestProvider>
-          </ConfigStateProvider>
-        </EngineStateProvider>
-      </AuthProvider>
-    </LanguageProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <EngineStateProvider>
+            <ConfigStateProvider>
+              <BacktestProvider>
+                <MainApp />
+              </BacktestProvider>
+            </ConfigStateProvider>
+          </EngineStateProvider>
+        </AuthProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }

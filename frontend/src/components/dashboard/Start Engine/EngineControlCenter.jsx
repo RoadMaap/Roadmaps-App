@@ -8,7 +8,7 @@ const EngineControlCenter = ({ onToggle, className = '' }) => {
     const isRunning = useEngineRunning();
 
     return (
-        <div className={`relative flex h-full min-h-[180px] shrink-0 flex-col overflow-hidden rounded-[10px] border-2 border-[#1B1B1B] bg-[#121212] p-1.5 ${className}`}>
+        <div className={`relative flex h-[328px] w-[360px] max-w-full min-h-0 shrink-0 flex-col overflow-hidden rounded-[10px] border-2 border-[#1B1B1B] bg-[#121212] p-1.5 ${className}`}>
             <div className="relative z-10 flex h-8 shrink-0 items-center justify-between gap-1 px-1.5">
                 <h3 className="min-w-0 truncate text-left text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500">{t('trading_engine')}</h3>
                 <Status
@@ -18,11 +18,11 @@ const EngineControlCenter = ({ onToggle, className = '' }) => {
                 >
                     <StatusIndicator aria-hidden="true" />
                     <StatusLabel className={`whitespace-nowrap ${isRunning ? 'text-emerald-300' : 'text-zinc-400'}`}>
-                        {isRunning ? t('processing_ticks') : t('system_offline')}
+                        {isRunning ? t('system_online') : t('system_offline')}
                     </StatusLabel>
                 </Status>
             </div>
-            <div className="relative z-10 mt-1 flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-[7px] border-2 border-[#1B1B1B] bg-[#090909] px-3 py-4">
+            <div className="relative z-10 flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-[7px] border-2 border-[#1B1B1B] bg-[#090909] px-3 py-4">
                 <button
                     type="button"
                     onClick={onToggle}
@@ -36,6 +36,12 @@ const EngineControlCenter = ({ onToggle, className = '' }) => {
                     <MorphIcon variant="play" active={isRunning} size={32} />
                     {isRunning && <span className="absolute inset-0 rounded-full border border-white/50 animate-ping opacity-50" />}
                 </button>
+                <span
+                    aria-hidden={!isRunning}
+                    className={`mt-3 h-3 shrink-0 font-mono text-[9px] leading-3 text-emerald-500/60 transition-opacity duration-300 ${isRunning ? 'opacity-100' : 'opacity-0'}`}
+                >
+                    {t('processing_ticks')}
+                </span>
             </div>
         </div>
     );

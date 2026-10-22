@@ -1,20 +1,38 @@
-import React, { createContext, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
-// ایجاد کانتکست برای مدیریت تم (دارک/لایت)
 const ThemeContext = createContext();
 
+const getInitialTheme = () => {
+    try {
+        const savedTheme = window.localStorage.getItem('app_theme');
+        return ['system', 'light', 'dark'].includes(savedTheme) ? savedTheme : 'dark';
+    } catch {
+        return 'dark';
+    }
+};
+
 export const ThemeProvider = ({ children }) => {
-    const theme = 'dark';
+    const [theme, setTheme] = useState(getInitialTheme);
 
     useEffect(() => {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('app_theme', 'dark');
-    }, []);
+        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+        const applyTheme = () => {
+            const useDarkTheme = theme === 'dark' || (theme === 'system' && systemTheme.matches);
+            document.documentElement.classList.toggle('dark', useDarkTheme);
+            window.localStorage.setItem('app_theme', theme);
+        };
 
-    const toggleTheme = () => {};
+        applyTheme();
+        if (theme !== 'system') return undefined;
+
+        systemTheme.addEventListener('change', applyTheme);
+        return () => systemTheme.removeEventListener('change', applyTheme);
+    }, [theme]);
+
+    const toggleTheme = () => setTheme((currentTheme) => currentTheme === 'dark' ? 'light' : 'dark');
 
     return (
-        <ThemeContext.Provider value={{ theme, toggleTheme }}>
+        <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
             {children}
         </ThemeContext.Provider>
     );
@@ -26,7 +44,7 @@ export const useTheme = () => {
     if (!context) {
         // این هشدار جلوی کرش کردن را می‌گیرد و مقدار پیش‌فرض می‌دهد
         console.warn("useTheme must be used within a ThemeProvider");
-        return { theme: 'dark', toggleTheme: () => {} };
+        return { theme: 'dark', setTheme: () => {}, toggleTheme: () => {} };
     }
     return context;
 };
