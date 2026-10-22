@@ -135,7 +135,7 @@ const translations = {
         update_install_failed: "The update could not be installed. Please try again later.",
 
         // --- Dashboard Stats ---
-        net_profit_today: "Net Profit (Today)",
+        net_profit_today: "Net Profit",
         drawdown: "Drawdown",
         roi: "ROI",
         account_balance: "Account Balance",

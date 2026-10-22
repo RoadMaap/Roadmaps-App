@@ -190,6 +190,14 @@ const Login = ({ onLoginSuccess }) => {
                             </HoverCard>
                         </header>
 
+                        {!isWideLayout && (
+                            <h1 className="mx-auto w-full max-w-[380px] pt-8 text-center text-2xl font-semibold leading-tight text-[#FCFCFD]">
+                                <span className="inline-block">
+                                    <BlurOutUp delay={600} stagger={600}>Welcome back</BlurOutUp>
+                                </span>
+                            </h1>
+                        )}
+
                         <div className="mt-10 flex flex-1 flex-col">
                             <div className="mx-auto mt-auto w-full max-w-[380px] space-y-3">
                                 <p aria-live="polite" className="flex items-center gap-2 text-xs leading-5 text-[#BDBABD]">

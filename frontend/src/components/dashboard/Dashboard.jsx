@@ -145,10 +145,13 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
         }
     };
 
-    function update_dashboard(profit, equity, positions) {
+    function update_dashboard(profit, equity, positions, brokerTimeMs) {
         const nextProfit = parseFloat(profit) || 0;
         const nextEquity = parseFloat(equity) || 0;
-        setLiveData({ profit: nextProfit, equity: nextEquity, positions: positions || 0 });
+        const nextBrokerTimeMs = brokerTimeMs != null && Number.isFinite(Number(brokerTimeMs))
+            ? Number(brokerTimeMs)
+            : null;
+        setLiveData({ profit: nextProfit, equity: nextEquity, positions: positions || 0, brokerTimeMs: nextBrokerTimeMs });
     }
 
     const handleStrategyConfigUpdate = (strategyName, newConfig) => {
@@ -168,26 +171,19 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
     return (
         <div className="flex h-screen flex-col overflow-hidden bg-[#141318] font-sans text-[#FCFCFD] selection:bg-[#F28C45]/20">
             <div className="relative flex flex-1 overflow-hidden">
-                <Sidebar
-                    status={status}
-                    activeTab={activeTab}
-                    appMode={appMode}
-                    hasUnreadBacktestResult={hasUnreadBacktestResult}
-                    onTabChange={(tab) => {
-                        setActiveTab(tab);
-                        setCurrentTab(tab);
-                    }}
-                />
-                <main ref={mainContentRef} className="relative z-10 flex h-full min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] bg-[#141318] custom-scroll">
-                    <div
-                        aria-hidden="true"
-                        className="pointer-events-none absolute inset-0 opacity-25"
-                        style={{
-                            backgroundImage: 'linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)',
-                            backgroundSize: '36px 36px',
-                            maskImage: 'radial-gradient(ellipse at center, black 15%, transparent 85%)',
+                <div className="relative z-30 h-full w-[76px] shrink-0">
+                    <Sidebar
+                        status={status}
+                        activeTab={activeTab}
+                        appMode={appMode}
+                        hasUnreadBacktestResult={hasUnreadBacktestResult}
+                        onTabChange={(tab) => {
+                            setActiveTab(tab);
+                            setCurrentTab(tab);
                         }}
                     />
+                </div>
+                <main ref={mainContentRef} className="relative z-10 flex h-full min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] bg-[#141318] custom-scroll">
                     <DashboardHeader
                         activeTab={activeTab}
                         appMode={appMode}

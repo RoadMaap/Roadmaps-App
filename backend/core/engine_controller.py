@@ -26,6 +26,35 @@ live_trader_instance = None
 engine_state_lock = threading.RLock()
 configuration_refresh_event = threading.Event()
 
+def get_broker_time_ms(symbols, clock_state):
+    monotonic_now = time.monotonic()
+    tick_times = []
+    for symbol in symbols:
+        tick = mt5_call(mt5.symbol_info_tick, symbol)
+        if tick:
+            tick_time_ms = getattr(tick, 'time_msc', 0) or int(tick.time * 1000)
+            if tick_time_ms > 0:
+                tick_times.append(tick_time_ms)
+
+    if tick_times:
+        latest_tick_ms = max(tick_times)
+        if clock_state.get('tick_time_ms') is None:
+            clock_state['tick_time_ms'] = latest_tick_ms
+            clock_state['monotonic_at'] = monotonic_now
+
+    if clock_state.get('tick_time_ms') is None:
+        return None
+
+    estimated_time_ms = clock_state['tick_time_ms'] + int(
+        (monotonic_now - clock_state['monotonic_at']) * 1000
+    )
+    if tick_times and latest_tick_ms > estimated_time_ms:
+        clock_state['tick_time_ms'] = latest_tick_ms
+        clock_state['monotonic_at'] = monotonic_now
+        estimated_time_ms = latest_tick_ms
+
+    return estimated_time_ms
+
 def sanitize_days_list(raw_val):
     try:
         if isinstance(raw_val, str): 
@@ -189,6 +218,15 @@ def run_trading_engine():
             
         live_trader_instance = LiveTrader(LIVE_CONFIG)
         eel.update_status('success', f"Engine Active with {len(LIVE_CONFIG['strategy_instances'])} Strategies.")
+        broker_clock_state = {'tick_time_ms': None, 'monotonic_at': None}
+        broker_symbols = list(dict.fromkeys(
+            config.get('symbol')
+            for config in LIVE_CONFIG['strategy_instances']
+            if config.get('symbol')
+        ))
+        for symbol in broker_symbols:
+            if not mt5_call(mt5.symbol_select, symbol, True):
+                ui_log('warning', f'Could not enable {symbol} in Market Watch for broker-time updates.')
         
         while robot_running:
             if configuration_refresh_event.is_set():
@@ -216,7 +254,8 @@ def run_trading_engine():
                 acc = mt5_call(mt5.account_info)
                 if acc:
                     pos_count = mt5_call(mt5.positions_total)
-                    eel.update_dashboard(round(acc.profit, 2), round(acc.equity, 2), pos_count)
+                    broker_time_ms = get_broker_time_ms(broker_symbols, broker_clock_state)
+                    eel.update_dashboard(round(acc.profit, 2), round(acc.equity, 2), pos_count, broker_time_ms)
             time.sleep(1)
             
     except Exception as e:
