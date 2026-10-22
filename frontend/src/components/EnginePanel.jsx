@@ -1,14 +1,14 @@
 import React, { memo, useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useConfigActions, useMt5Path } from '../context/ConfigStateContext';
-import { useEngineLogActions, useEngineLogs, useEngineRunning } from '../context/EngineStateContext';
+import { useEngineLogActions, useEngineLogs } from '../context/EngineStateContext';
+import EngineControlCenter from './dashboard/Start Engine/EngineControlCenter';
 
-const EnginePanel = ({ onToggle }) => {
+const EnginePanel = ({ onToggle, controlCenterClassName = '' }) => {
     const { t } = useLanguage();
     const mt5Path = useMt5Path();
     const { setMt5Path } = useConfigActions();
     const logs = useEngineLogs();
-    const isRunning = useEngineRunning();
     const { clearLogs } = useEngineLogActions();
     const scrollViewportRef = useRef(null);
     const [isCopied, setIsCopied] = useState(false);
@@ -49,37 +49,7 @@ const EnginePanel = ({ onToggle }) => {
     return (
         <div className="flex flex-col gap-6 font-sans h-full">
             
-            {/* --- Control Center --- */}
-            <div className="relative flex min-h-[180px] shrink-0 flex-col items-center justify-center overflow-hidden rounded-lg border border-[#2F2E35] bg-[#1A191E] p-6">
-
-                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-6 relative z-10">{t('trading_engine')}</h3>
-                
-                <button 
-                    onClick={onToggle} 
-                    className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 outline-none ${
-                        isRunning 
-                        ? 'bg-emerald-500 text-white shadow-[0_0_50px_-10px_#10b981] scale-105' 
-                        : 'bg-[#18181b] border-2 border-zinc-700 text-zinc-600 hover:border-zinc-500 hover:text-zinc-300 hover:shadow-[0_0_20px_-5px_rgba(255,255,255,0.1)]'
-                    }`}
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-8 w-8 transition-all duration-500 ${isRunning ? 'drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    
-                    {isRunning && (
-                        <span className="absolute inset-0 rounded-full border border-white/50 animate-ping opacity-50"></span>
-                    )}
-                </button>
-                
-                <div className="mt-5 relative z-10 flex flex-col items-center h-10 justify-start">
-                    <span className={`text-xs font-bold transition-all duration-300 ${isRunning ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'text-zinc-500'}`}>
-                        {isRunning ? 'SYSTEM ONLINE' : 'SYSTEM OFFLINE'}
-                    </span>
-                    <span className={`text-[9px] text-emerald-500/60 mt-1 font-mono transition-opacity duration-300 ${isRunning ? 'opacity-100' : 'opacity-0'}`}>
-                        Processing Ticks...
-                    </span>
-                </div>
-            </div>
+            <EngineControlCenter onToggle={onToggle} className={controlCenterClassName} />
 
             {/* --- Path Settings --- */}
             <div className="shrink-0 rounded-lg border border-[#2F2E35] bg-[#1A191E] p-4">

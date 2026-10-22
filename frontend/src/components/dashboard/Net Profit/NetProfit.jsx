@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLanguage } from '../../context/LanguageContext';
-import { DottedAreaChart } from '../ui/dotted-area-chart';
+import { useLanguage } from '../../../context/LanguageContext';
+import { DottedAreaChart } from '../../ui/dotted-area-chart';
 
 const SAMPLE_INTERVAL_MS = 1_000;
 const HISTORY_SIZE = 300;
@@ -34,7 +34,7 @@ const NetProfit = ({ profit, brokerTimeMs }) => {
 
     return (
         <section
-            className="h-full w-full min-w-0 rounded-lg border border-[#2F2E35] bg-[#1A191E] p-4 sm:p-6 sm:pb-5"
+            className="mx-auto h-full w-full max-w-[760px] min-w-0 rounded-lg border border-[#2F2E35] bg-[#1A191E] p-4 sm:p-6 sm:pb-5"
             aria-label={`${t('net_profit_today')}: $${profit.toFixed(2)}`}
         >
             <div className="flex h-full min-h-0 w-full min-w-0 flex-col">

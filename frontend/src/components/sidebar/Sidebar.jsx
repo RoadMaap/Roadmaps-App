@@ -15,6 +15,9 @@ const Sidebar = ({ status, activeTab, appMode = 'live', hasUnreadBacktestResult 
     const markerAnimationRef = useRef(null);
     const [isCollapsed, setIsCollapsed] = useState(true);
     const isRtl = lang === 'fa';
+    const sidebarToggleLabel = isCollapsed
+        ? (isRtl ? 'باز کردن نوار کناری' : 'Expand sidebar')
+        : (isRtl ? 'بستن نوار کناری' : 'Collapse sidebar');
 
     const connectionState = status === 'Running'
         ? {
@@ -147,9 +150,21 @@ const Sidebar = ({ status, activeTab, appMode = 'live', hasUnreadBacktestResult 
 
                 <nav className="mt-3 flex-1" aria-label={isRtl ? 'منوی اصلی' : 'Main navigation'}>
                     <div dir={isRtl ? 'rtl' : 'ltr'} className="mb-2 flex h-8 items-center justify-between border-b border-[#2F2E35]">
-                        <button type="button" onClick={handleSidebarToggle} aria-label={isCollapsed ? (isRtl ? 'باز کردن نوار کناری' : 'Expand sidebar') : (isRtl ? 'بستن نوار کناری' : 'Collapse sidebar')} aria-expanded={!isCollapsed} title={isCollapsed ? (isRtl ? 'باز کردن نوار کناری' : 'Expand sidebar') : (isRtl ? 'بستن نوار کناری' : 'Collapse sidebar')} className="ms-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#7A797E] transition-colors hover:text-[#F28C45] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#F28C45]">
-                            <MorphIcon variant="sidebar" active={!isCollapsed} size={18} />
-                        </button>
+                        <HoverCard>
+                            <HoverCardTrigger
+                                delay={180}
+                                render={(
+                                    <button type="button" onClick={handleSidebarToggle} aria-label={sidebarToggleLabel} aria-expanded={!isCollapsed} className="ms-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#7A797E] transition-colors hover:text-[#F28C45] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#F28C45]">
+                                        <MorphIcon variant="sidebar" active={!isCollapsed} size={18} />
+                                    </button>
+                                )}
+                            />
+                            {isCollapsed && (
+                                <HoverCardContent side={isRtl ? 'left' : 'right'} sideOffset={8} align="center" className="login-language-hover-card w-auto max-w-[220px] border border-[#2F2E35] bg-[#1A191E] px-3 py-2 text-xs text-[#FCFCFD] shadow-lg">
+                                    {sidebarToggleLabel}
+                                </HoverCardContent>
+                            )}
+                        </HoverCard>
                         <p dir={isRtl ? 'rtl' : 'ltr'} className={`text-[10px] font-semibold uppercase text-[#7A797E] transition-colors hover:text-[#F28C45] ${isCollapsed ? 'hidden' : ''}`}>
                             {t('menu') || (isRtl ? 'منو' : 'Menu')}
                         </p>

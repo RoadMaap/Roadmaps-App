@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye } from "@/components/animate-ui/icons/eye"
+import { EyeOff } from "@/components/animate-ui/icons/eye-off"
 
 import { cn } from "@/lib/utils"
 
@@ -106,7 +107,9 @@ export function BalanceHeader({
               exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.8, filter: "blur(2px)" }}
               transition={{ duration: 0.12, ease: EASE }}
             >
-              {hidden ? <EyeOff size={13} aria-hidden /> : <Eye size={13} aria-hidden />}
+              {hidden
+                ? <EyeOff size={13} animateOnHover aria-hidden />
+                : <Eye size={13} animateOnHover animation="look" aria-hidden />}
             </motion.span>
           </AnimatePresence>
         </button>

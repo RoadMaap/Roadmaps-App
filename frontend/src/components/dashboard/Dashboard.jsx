@@ -184,15 +184,6 @@ const Dashboard = ({ updateInfo, onStartOptionalUpdate }) => {
                     />
                 </div>
                 <main ref={mainContentRef} className="relative z-10 flex h-full min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] bg-[#141318] custom-scroll">
-                    <div
-                        aria-hidden="true"
-                        className="pointer-events-none absolute inset-0 opacity-25"
-                        style={{
-                            backgroundImage: 'linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)',
-                            backgroundSize: '36px 36px',
-                            maskImage: 'radial-gradient(ellipse at center, black 15%, transparent 85%)',
-                        }}
-                    />
                     <DashboardHeader
                         activeTab={activeTab}
                         appMode={appMode}
