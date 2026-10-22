@@ -1,5 +1,6 @@
 import sys
 import pickle
+import threading
 import tempfile
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -18,6 +19,7 @@ from backend.backtest.engine import SecurityGuard, Multi_Backtester
 from backend.backtest.reporter import BacktestReporter
 from backend.backtest import reporter as reporter_module
 from backend.backtest import data_fetcher as data_fetcher_module
+from backend.core.error_handler import StrategyValidator
 from backend.trading.risk_manager import FixedLotRule
 
 
@@ -41,6 +43,52 @@ def build_sample_data():
             'volume': 10.0,
         })
     return pd.DataFrame(values).set_index('time')
+
+
+def test_entry_signal_normalization_rejects_invalid_values():
+    assert StrategyValidator.normalize_entry_signal(('buy', 100.0, 99.0, 102.0)) == (
+        'buy', 100.0, 99.0, 102.0
+    )
+    assert StrategyValidator.normalize_entry_signal(('buy', 100.0, 101.0, 102.0)) == (
+        None, None, None, None
+    )
+    assert StrategyValidator.normalize_entry_signal(('sell', 100.0, 98.0, 97.0)) == (
+        None, None, None, None
+    )
+    assert StrategyValidator.normalize_entry_signal(('buy', float('nan'), 99.0, 102.0)) == (
+        None, None, None, None
+    )
+    assert StrategyValidator.normalize_entry_signal(None) == (None, None, None, None)
+
+
+def test_backtest_engine_cancels_between_candles():
+    cancel_event = threading.Event()
+    candles = pd.DataFrame(index=pd.date_range('2024-01-01', periods=3, freq='5min'))
+    processed_candles = []
+    progress_updates = []
+
+    def report_progress(percent, phase):
+        progress_updates.append(percent)
+        cancel_event.set()
+
+    engine = Multi_Backtester.__new__(Multi_Backtester)
+    engine.cancel_event = cancel_event
+    engine.config = {'assets': []}
+    engine.loader = SimpleNamespace(load_and_merge=lambda: candles)
+    engine.status_callback = None
+    engine.progress_callback = report_progress
+    engine.pure_data = {}
+    engine.pointers = {}
+    engine.signal_engine = SimpleNamespace(
+        process_all_assets=lambda timestamp: processed_candles.append(timestamp)
+    )
+    engine.position_engine = SimpleNamespace(manage_all_positions=lambda timestamp: None)
+
+    engine.run()
+
+    assert len(processed_candles) == 1
+    assert len(progress_updates) == 1
+    assert progress_updates[0] < 100.0
 
 
 def test_backtest_output():

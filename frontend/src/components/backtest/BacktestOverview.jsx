@@ -16,11 +16,10 @@ const BacktestOverview = () => {
         progress,
         isBacktesting,
         backtestResult,
-        receiveBacktestResult,
         setBacktestResult,
         setIsBacktesting,
     } = useBacktest();
-    const [isSaving, setIsSaving] = useState(false);
+    const [isCancelling, setIsCancelling] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
     const logViewportRef = useRef(null);
     const hasRequestedResultRef = useRef(false);
@@ -36,43 +35,38 @@ const BacktestOverview = () => {
         if (logViewportRef.current) logViewportRef.current.scrollTop = logViewportRef.current.scrollHeight;
     }, [logs]);
 
+    useEffect(() => {
+        if (!isBacktesting) setIsCancelling(false);
+    }, [isBacktesting]);
+
     const updateSetting = (key, value) => setSettings({ [key]: value });
 
-    const handleSave = async () => {
-        setIsSaving(true);
-        try {
-            if (window.eel) await window.eel.save_backtest_config(settings)();
-        } catch (error) {
-            console.error('Could not save backtest settings:', error);
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
     const handleRunToggle = async () => {
-        if (!window.eel) return;
+        if (!window.eel || isCancelling) return;
         try {
             if (isBacktesting) {
-                await window.eel.stop_backtest()();
-                setIsBacktesting(false);
+                setIsCancelling(true);
+                const response = await window.eel.stop_backtest()();
+                if (response?.success === false) setIsCancelling(false);
             } else {
                 setIsBacktesting(true);
+                setIsCancelling(false);
                 await window.eel.save_backtest_config(settings)();
                 const response = await window.eel.start_backtest()();
-                if (response?.success === false) {
+                if (response?.cancelled) {
                     setIsBacktesting(false);
+                    setIsCancelling(false);
                     return;
                 }
-                const report = response?.report || response?.result || (response?.summary ? response : null);
-                if (report) {
-                    receiveBacktestResult(report);
-                } else {
-                    const fallback = await window.eel.get_last_backtest_result()();
-                    if (fallback?.success && fallback.result) receiveBacktestResult(fallback.result);
+                if (response?.success === false) {
+                    setIsBacktesting(false);
+                    setIsCancelling(false);
+                    return;
                 }
             }
         } catch (error) {
             setIsBacktesting(false);
+            setIsCancelling(false);
             console.error('Backtest control request failed:', error);
         }
     };
@@ -168,24 +162,24 @@ const BacktestOverview = () => {
                             </div>
                         </section>
                     </div>
-                    <footer className="shrink-0 border-t border-[#2F2E35] bg-[#1E1D22] p-4">
-                        <button type="button" onClick={handleSave} disabled={isSaving} className="group flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-emerald-500 px-4 text-sm font-semibold text-white shadow-[0_4px_15px_rgba(16,185,129,0.25)] transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70">
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4-3 3m0 0-3-3m3 3V4" /></svg>
-                            <span>{isSaving ? (lang === 'fa' ? 'در حال ذخیره...' : 'Saving...') : (t('save_config') || 'Save Config')}</span>
-                        </button>
-                    </footer>
                 </section>
 
                 <div className="flex min-h-[500px] flex-col gap-6 lg:col-span-4">
                     <section className="relative flex min-h-[180px] shrink-0 flex-col items-center justify-center overflow-hidden rounded-lg border border-[#2F2E35] bg-[#1A191E] p-6">
                         <h2 className="relative z-10 mb-6 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">{t('trading_engine')}</h2>
-                        <button type="button" onClick={handleRunToggle} aria-label={isBacktesting ? (t('bt_stop') || 'Stop Backtest') : (t('bt_run') || 'Run Backtest')} className={`relative z-10 flex h-20 w-20 items-center justify-center rounded-full transition-all duration-500 outline-none ${isBacktesting ? 'scale-105 bg-emerald-500 text-white shadow-[0_0_50px_-10px_#10b981]' : 'border-2 border-zinc-700 bg-[#18181b] text-zinc-600 hover:border-zinc-500 hover:text-zinc-300 hover:shadow-[0_0_20px_-5px_rgba(255,255,255,0.1)]'}`}>
-                            <svg className={`h-8 w-8 transition-all duration-500 ${isBacktesting ? 'drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                            {isBacktesting && <span className="absolute inset-0 rounded-full border border-white/50 animate-ping opacity-50" />}
+                        <button type="button" onClick={handleRunToggle} disabled={isCancelling} aria-label={isCancelling ? (t('bt_cancelling') || 'Cancelling backtest') : isBacktesting ? (t('bt_stop') || 'Cancel Backtest') : (t('bt_run') || 'Run Backtest')} className={`relative z-10 flex items-center justify-center gap-2 outline-none transition-all duration-300 disabled:cursor-wait disabled:opacity-70 ${isBacktesting ? 'min-h-11 w-full max-w-xs rounded-md bg-rose-600 px-4 text-sm font-semibold text-white hover:bg-rose-500' : 'h-20 w-20 rounded-full border-2 border-zinc-700 bg-[#18181b] text-zinc-600 hover:border-zinc-500 hover:text-zinc-300 hover:shadow-[0_0_20px_-5px_rgba(255,255,255,0.1)]'}`}>
+                            {isBacktesting ? (
+                                <>
+                                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6z" /></svg>
+                                    <span>{isCancelling ? (t('bt_cancelling') || 'Cancelling...') : (t('bt_stop') || 'Cancel Backtest')}</span>
+                                </>
+                            ) : (
+                                <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                            )}
                         </button>
                         <div className="relative z-10 mt-5 flex h-10 flex-col items-center justify-start">
                             <span className={`text-[10px] font-bold transition-colors ${isBacktesting ? 'text-emerald-400' : 'text-zinc-500'}`}>{statusText}</span>
-                            {isBacktesting && <span className="mt-1 text-[9px] font-mono text-emerald-500/70">{progress?.phase || 'Preparing backtest'}</span>}
+                            {isBacktesting && <span className="mt-1 text-[9px] font-mono text-emerald-500/70">{isCancelling ? (t('bt_cancelling') || 'Cancelling...') : progress?.phase || 'Preparing backtest'}</span>}
                         </div>
                         {isBacktesting && <div className="relative z-10 mt-2 w-full max-w-xs">
                             <div className="mb-1 flex justify-between text-[9px] font-mono text-zinc-400"><span>{progress?.phase || 'Running'}</span><span>{Math.round(percent)}%</span></div>

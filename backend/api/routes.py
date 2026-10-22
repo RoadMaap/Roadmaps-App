@@ -457,17 +457,14 @@ def start_backtest():
         config,
         progress_callback=_emit_backtest_progress,
         status_callback=_emit_backtest_status,
+        result_callback=_emit_backtest_results,
     )
 
     if not start_result.get('success'):
         return start_result
 
     _emit_backtest_status('warning', 'Backtest run initiated.')
-    report = BACKTEST_CONTROLLER.wait_for_completion()
-    if report is None:
-        report = {'error': 'Backtest finished without producing a report.', 'summary': {'final_equity': 0.0}, 'trades': []}
-    _emit_backtest_results(report)
-    return report
+    return start_result
 
 
 @eel.expose

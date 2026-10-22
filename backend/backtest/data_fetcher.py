@@ -144,7 +144,11 @@ def detect_symbol_specs(symbol, mt5_path=''):
         return {'success': False, 'message': str(exc)}
 
 
-def fetch_symbol_history(symbol, start_date, timeframe='M5', lookback_period=500, progress_callback=None, mt5_path=''):
+class BacktestCancelled(Exception):
+    pass
+
+
+def fetch_symbol_history(symbol, start_date, timeframe='M5', lookback_period=500, progress_callback=None, mt5_path='', cancel_event=None):
     """Drill historical candles from MT5 on a safe dispatcher thread and save them as TSV data."""
     symbol = (symbol or '').strip()
     if not symbol:
@@ -184,6 +188,8 @@ def fetch_symbol_history(symbol, start_date, timeframe='M5', lookback_period=500
     loop_count = 0
     range_error = None
     while current_cursor > effective_start and loop_count < max_loops:
+        if cancel_event is not None and cancel_event.is_set():
+            raise BacktestCancelled('Backtest cancelled during history download.')
         loop_count += 1
         end_bound = current_cursor
         max_chunk_seconds = min(CHUNK_DAYS * 86400, timeframe_seconds * MAX_BARS_PER_REQUEST)
@@ -207,6 +213,8 @@ def fetch_symbol_history(symbol, start_date, timeframe='M5', lookback_period=500
                 start_position = 1
                 remaining_bars = requested_bars
                 while remaining_bars > 0:
+                    if cancel_event is not None and cancel_event.is_set():
+                        raise BacktestCancelled('Backtest cancelled during history download.')
                     batch_size = min(MAX_BARS_PER_REQUEST, remaining_bars)
                     batch = mt5_call(position_fetch, symbol, timeframe_mt5, start_position, batch_size)
                     if batch is None or len(batch) == 0:
@@ -270,6 +278,8 @@ def fetch_symbol_history(symbol, start_date, timeframe='M5', lookback_period=500
             f'(last completed candle cutoff {last_closed_bar_end.isoformat()}).'
         )
     df = df.drop_duplicates(subset=['DATE', 'TIME']).sort_values(['DATE', 'TIME']).reset_index(drop=True)
+    if cancel_event is not None and cancel_event.is_set():
+        raise BacktestCancelled('Backtest cancelled before history was saved.')
     target_dir = ensure_backtest_data_dir()
     filename = f'{symbol.upper()}_{timeframe.upper()}.csv'
     file_path = target_dir / filename

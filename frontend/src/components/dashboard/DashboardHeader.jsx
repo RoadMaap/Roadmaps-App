@@ -6,13 +6,19 @@ import { Globe } from '../animate-ui/icons/globe';
 import { AnimateIcon } from '@animate-ui/react/icons';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '../ui/hover-card';
 
-const UpgradeModal = ({ onClose, onUpgrade, onDemo, lang, t }) => {
-    const features = [
+const UpgradeModal = ({ onClose, onUpgrade, onDemo, targetPlan, lang, t }) => {
+    const isProUpgrade = targetPlan === 'Pro';
+    const features = isProUpgrade ? [
         'feature_unlimited_strategies',
         'feature_ai_vision',
         'feature_smart_news_filter',
         'feature_advanced_risk',
         'feature_engine_warmup',
+    ] : [
+        'feature_full_backtest',
+        'feature_multi_strategy_backtest',
+        'feature_market_scanner',
+        'feature_trading_chart_analysis',
     ];
 
     useEffect(() => {
@@ -33,9 +39,9 @@ const UpgradeModal = ({ onClose, onUpgrade, onDemo, lang, t }) => {
                 <span className="mb-5 flex h-12 w-12 items-center justify-center rounded-full border border-amber-200/25 bg-amber-200/10 text-amber-200">
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" d="m12 3 2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2L12 3Z" /><path strokeLinecap="round" strokeWidth="1.7" d="m19 16 .9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9L19 16Z" /></svg>
                 </span>
-                <p className="mb-2 text-[10px] font-bold uppercase text-amber-200/80">{t('plan_pro')}</p>
-                <h2 id="upgrade-modal-title" className="text-xl font-bold leading-snug">{t('upgrade_modal_title')}</h2>
-                <p className="mt-2 text-sm leading-6 text-zinc-400">{t('upgrade_modal_desc')}</p>
+                <p className="mb-2 text-[10px] font-bold uppercase text-amber-200/80">{t(isProUpgrade ? 'plan_pro' : 'plan_advance')}</p>
+                <h2 id="upgrade-modal-title" className="text-xl font-bold leading-snug">{t(isProUpgrade ? 'upgrade_pro_modal_title' : 'upgrade_advance_modal_title')}</h2>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">{t(isProUpgrade ? 'upgrade_pro_modal_desc' : 'upgrade_advance_modal_desc')}</p>
                 <ul className="mt-6 space-y-3">
                     {features.map((feature) => (
                         <li key={feature} className="flex items-start gap-3 text-sm text-zinc-200">
@@ -47,11 +53,11 @@ const UpgradeModal = ({ onClose, onUpgrade, onDemo, lang, t }) => {
                     ))}
                 </ul>
                 <button type="button" onClick={onUpgrade} className="mt-7 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-amber-200 px-5 py-3 text-sm font-bold text-[#201b10] transition hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200">
-                    {t('upgrade_account')}
+                    {t(isProUpgrade ? 'upgrade_to_pro' : 'upgrade_to_advance')}
                     <span aria-hidden="true">↗</span>
                 </button>
                 <button type="button" onClick={onDemo} className="mt-3 min-h-10 w-full rounded-md border border-[#3A3940] px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-200">
-                    {t('try_pro_demo')}
+                    {t(isProUpgrade ? 'try_pro_demo' : 'try_advance_demo')}
                 </button>
             </section>
         </div>
@@ -63,6 +69,7 @@ const DashboardHeader = ({ activeTab, appMode = 'live', userName, strategyCount,
     const { plan, setPlan } = useAuth();
     const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
     const planLabel = String(plan || 'Basic').toLowerCase() === 'advance' ? 'Advance' : String(plan || 'Basic').toLowerCase() === 'pro' ? 'Pro' : 'Basic';
+    const targetPlan = planLabel === 'Basic' ? 'Pro' : planLabel === 'Pro' ? 'Advance' : null;
     const isBacktestMode = appMode === 'backtest';
     const title = isBacktestMode
         ? activeTab === 'bt_overview'
@@ -114,10 +121,11 @@ const DashboardHeader = ({ activeTab, appMode = 'live', userName, strategyCount,
                 </div>
                 <button
                     type="button"
-                    onClick={() => setIsUpgradeModalOpen(true)}
+                    onClick={() => targetPlan && setIsUpgradeModalOpen(true)}
+                    disabled={!targetPlan}
                     aria-haspopup="dialog"
                     aria-label={planLabel}
-                    className={`inline-flex min-h-10 items-center rounded-md border px-2 text-[10px] font-bold transition sm:px-3 ${planLabel === 'Basic' ? 'border-zinc-600/70 bg-zinc-700/30 text-zinc-300 hover:bg-zinc-700/60' : 'border-amber-200/40 bg-amber-200/10 text-amber-200 shadow-[0_0_16px_rgba(251,191,36,0.13)] hover:bg-amber-200/15'}`}
+                    className={`inline-flex min-h-10 items-center rounded-md border px-2 text-[10px] font-bold transition disabled:cursor-default ${planLabel === 'Basic' ? 'border-zinc-600/70 bg-zinc-700/30 text-zinc-300 hover:bg-zinc-700/60' : 'border-amber-200/40 bg-amber-200/10 text-amber-200 shadow-[0_0_16px_rgba(251,191,36,0.13)] hover:bg-amber-200/15 disabled:hover:bg-amber-200/10'}`}
                 >
                     {planLabel}
                 </button>
@@ -158,20 +166,21 @@ const DashboardHeader = ({ activeTab, appMode = 'live', userName, strategyCount,
                 <UpgradeModal
                     onClose={() => setIsUpgradeModalOpen(false)}
                     onDemo={async () => {
-                        const nextPlan = 'Advance';
-                        setPlan(nextPlan);
-                        if (window.eel) await window.eel.save_user_config({ plan: nextPlan })();
-                        if (window.eel) await window.eel.set_user_plan(nextPlan)();
+                        if (!targetPlan) return;
+                        setPlan(targetPlan);
+                        if (window.eel) await window.eel.save_user_config({ plan: targetPlan })();
+                        if (window.eel) await window.eel.set_user_plan(targetPlan)();
                         setIsUpgradeModalOpen(false);
                     }}
                     onUpgrade={() => {
-                        const nextPlan = 'Advance';
-                        setPlan(nextPlan);
-                        if (window.eel) window.eel.save_user_config({ plan: nextPlan })();
-                        if (window.eel) window.eel.set_user_plan(nextPlan)();
-                        window.dispatchEvent(new CustomEvent('roadmaps:upgrade-requested', { detail: { requiredPlan: 'Advance' } }));
+                        if (!targetPlan) return;
+                        setPlan(targetPlan);
+                        if (window.eel) window.eel.save_user_config({ plan: targetPlan })();
+                        if (window.eel) window.eel.set_user_plan(targetPlan)();
+                        window.dispatchEvent(new CustomEvent('roadmaps:upgrade-requested', { detail: { requiredPlan: targetPlan } }));
                         setIsUpgradeModalOpen(false);
                     }}
+                    targetPlan={targetPlan}
                     lang={lang}
                     t={t}
                 />

@@ -11,20 +11,43 @@ import numpy as np
 import pandas_ta as ta
 import mplfinance as mpf
 
+# STRICT ROADMAPS STRATEGY RULES
+# TWO-PHASE RESPONSE WORKFLOW:
+# Phase 1: Do not write any code. Summarize the requested strategy, entry/exit
+# rules, indicators, parameters, closed-candle timing, and initial SL/TP policy.
+# State any assumptions and identify missing decisions. If a required detail is
+# missing, ask focused questions instead of guessing. Otherwise ask the user to
+# explicitly confirm the proposed plan, then stop and wait.
+# Do not reveal private chain-of-thought; give only a concise design summary.
+# Phase 2: Only after explicit user confirmation, output the complete Strategy
+# class in exactly one Python code block. Include every method from this
+# template, preserving signatures and unchanged scaffold methods. Do not send
+# fragments, patches, multiple alternatives, or a partial implementation.
+# Implement only the needed method bodies; do not add or remove methods.
+# If the user changes requirements after confirmation, return to Phase 1.
+# Do not add imports, methods, classes, state, or lifecycle hooks.
+# The platform owns sizing, risk, leverage, margin, trailing stops, breakeven,
+# partial closes, and order execution. Do not implement those features.
+# Recreating or bypassing plan-restricted Roadmaps features violates platform
+# rules. Do not help implement a workaround for unavailable capabilities.
+# If requested, briefly say the platform handles them and continue only with
+# the allowed signal logic; ask for missing initial SL/TP requirements.
+# For entry logic, use df.iloc[-2] for every condition and indicator decision.
+# Never use iloc[-1] for signal logic; only iloc[-1]['open'] may be the entry anchor.
+# Do not use future rows, negative shifts, or centered windows.
+# Use scalar values in conditions. Validate missing and non-finite values.
+# Check denominators explicitly; never substitute arbitrary epsilons.
+# Select pandas_ta output by verified column name, not positional index.
+# Return exactly (trade_type, entry, sl, tp), or (None, None, None, None).
+# Valid prices must be finite scalar floats with directionally valid SL/TP.
+# Do not invent an initial SL/TP policy when it is unspecified.
+
 class Strategy:
     def __init__(self, params=None):
-        """
-        AI INSTRUCTIONS: Follow every rule in this contract.
-        1. Prevent lookahead bias. The final row is the newly opened current candle. Use only its open for entry price and use closed candles such as df.iloc[-2] and df.iloc[-3] for signal conditions. Never use the current candle's high, low, close, volume, or derived indicators for entry logic.
-        2. Handle division by zero explicitly. For a range series, replace zero values with a small positive value before division.
-        3. Multi-column pandas_ta indicators can change output column names. Select output columns by position or inspect the returned DataFrame before assigning them.
-        4. Convert parameters explicitly with int() or float() before using them.
-        5. Convert pandas scalar comparisons to bool() before using them in Python conditionals.
-        6. Preserve this complete method contract for both Live and V3.9 Backtest engines.
-        """
         self.params = params or {}
 
     def prepare_indicators(self, df, candle_type='STANDARD'):
+        """Calculate indicators without dropping rows or mutating unrelated columns."""
         ema_length = int(self.params.get('EMA_LEN', 50))
         df[f'EMA_{ema_length}'] = ta.ema(df['close'], length=ema_length)
         return df
@@ -38,37 +61,44 @@ class Strategy:
         return [f'EMA_{ema_length}']
 
     def check_entry_signal(self, df):
-        min_len = int(self.params.get('MIN_LOOKBACK', 50))
+        try:
+            min_len = int(self.params.get('MIN_LOOKBACK', 50))
+        except (TypeError, ValueError, OverflowError):
+            return None, None, None, None
         if len(df) < max(min_len, 3):
-            return None, 0.0, 0.0, 0.0
+            return None, None, None, None
 
         signal_candle = df.iloc[-2]
         current_candle = df.iloc[-1]
         trade_type = None
-        entry_price = float(current_candle['open'])
-        stop_loss = 0.0
-        take_profit = 0.0
+        try:
+            entry_price = float(current_candle['open'])
+            if not np.isfinite(entry_price):
+                return None, None, None, None
+        except (KeyError, TypeError, ValueError, OverflowError):
+            return None, None, None, None
 
-        is_bullish = bool(signal_candle['close'] > signal_candle['open'])
-        if is_bullish:
-            trade_type = 'buy'
-            stop_loss = float(signal_candle['low'] - 2.0)
-            take_profit = float(entry_price + (entry_price - stop_loss) * 2.0)
+        stop_loss = None
+        take_profit = None
 
-        if trade_type in ['buy', 'sell']:
-            if stop_loss <= 0 or take_profit <= 0:
-                return None, entry_price, 0.0, 0.0
-            risk_distance = abs(entry_price - stop_loss)
-            if risk_distance <= 0:
-                return None, entry_price, 0.0, 0.0
-            if trade_type == 'buy' and stop_loss >= entry_price:
-                return None, entry_price, 0.0, 0.0
-            if trade_type == 'sell' and stop_loss <= entry_price:
-                return None, entry_price, 0.0, 0.0
+        # --- Write scalar-only signal logic and an explicit initial SL/TP policy here. ---
+        if trade_type not in ('buy', 'sell') or stop_loss is None or take_profit is None:
+            return None, None, None, None
 
-            return trade_type, entry_price, stop_loss, take_profit
+        try:
+            stop_loss = float(stop_loss)
+            take_profit = float(take_profit)
+        except (TypeError, ValueError, OverflowError):
+            return None, None, None, None
 
-        return None, entry_price, stop_loss, take_profit
+        if not (np.isfinite(stop_loss) and np.isfinite(take_profit)):
+            return None, None, None, None
+        if trade_type == 'buy' and not (stop_loss < entry_price < take_profit):
+            return None, None, None, None
+        if trade_type == 'sell' and not (take_profit < entry_price < stop_loss):
+            return None, None, None, None
+
+        return trade_type, entry_price, stop_loss, take_profit
 
     def check_exit_conditions(self, current_candle, history_slice, position):
         """
@@ -152,6 +182,15 @@ class Strategy:
                     <p className="text-sm text-zinc-500 leading-relaxed">{t('step_3_desc')}</p>
                 </div>
             </div>
+
+            <section className="shrink-0 border-l-4 border-amber-400/70 bg-amber-400/[0.06] px-5 py-4" aria-labelledby="ai-builder-boundary-title">
+                <h3 id="ai-builder-boundary-title" className="text-sm font-bold text-amber-200">
+                    {t('ai_builder_boundary_title')}
+                </h3>
+                <p className="mt-2 max-w-5xl text-sm leading-6 text-zinc-300">
+                    {t('ai_builder_boundary_desc')}
+                </p>
+            </section>
 
             {/* Code Template Display & Copy Action */}
             <div className="flex-1 bg-[#09090b] border border-zinc-800 rounded-3xl flex flex-col overflow-hidden relative shadow-2xl group">

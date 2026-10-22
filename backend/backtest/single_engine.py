@@ -42,8 +42,10 @@ if project_root not in sys.path:
 # ==============================================================================
 try:
     from trading.margin_calculator import MarginManager
+    from core.error_handler import StrategyValidator
 except ImportError:
     from backend.trading.margin_calculator import MarginManager
+    from backend.core.error_handler import StrategyValidator
 
 # ==============================================================================
 # Engine Info
@@ -241,7 +243,8 @@ class SignalEngine:
 
             # Request the strategy signal.
             safe_slice = self.security.get_safe_history_slice(history_slice)
-            trade_type, entry, sl, tp = self.bt.strategy.check_entry_signal(safe_slice)
+            signal = self.bt.strategy.check_entry_signal(safe_slice)
+            trade_type, entry, sl, tp = StrategyValidator.normalize_entry_signal(signal)
 
             if trade_type:
                 self.security.audit_signal_integrity("Strategy", entry, history_slice.iloc[-1])

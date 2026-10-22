@@ -79,11 +79,11 @@ export const BacktestProvider = ({ children }) => {
             const normalizedPercent = Number(percent || 0);
             setState((previous) => ({
                 ...previous,
-                isBacktesting: normalizedPercent < 100,
+                isBacktesting: true,
                 progress: {
                     percent: normalizedPercent,
                     phase: phaseText || previous.progress?.phase || 'Running',
-                    isRunning: normalizedPercent < 100,
+                    isRunning: true,
                 },
             }));
         };
@@ -93,8 +93,10 @@ export const BacktestProvider = ({ children }) => {
                 ...previous,
                 isBacktesting: false,
                 progress: { ...previous.progress, percent: 100, isRunning: false },
-                backtestResult: report || previous.backtestResult,
-                hasUnreadBacktestResult: previous.currentTab !== 'bt_analytics',
+                backtestResult: report?.cancelled ? previous.backtestResult : report || previous.backtestResult,
+                hasUnreadBacktestResult: report?.cancelled
+                    ? previous.hasUnreadBacktestResult
+                    : previous.currentTab !== 'bt_analytics',
             }));
         };
 

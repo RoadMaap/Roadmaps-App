@@ -21,7 +21,7 @@ try:
     from trading.risk_manager import *
     from trading.margin_calculator import MarginManager
     from core.target_lock import TargetLockManager
-    from core.error_handler import ErrorManager, ui_log
+    from core.error_handler import ErrorManager, StrategyValidator, ui_log
     from core.mt5_runtime import MT5TaskExecutor, mt5_call, mt5_order_send, serialized_mt5
 except ImportError as e:
     print(f"❌ Critical Core Engine Import Error: {e}")
@@ -285,6 +285,31 @@ class LiveSignalEngine:
         }
         self.config = config
 
+    def _mask_current_candle(self, df):
+        if not self.config.get('STRICT_LOOKAHEAD_PROTECTION', True):
+            return df
+
+        safe_df = df.copy()
+        if safe_df.empty or 'open' not in safe_df.columns:
+            return safe_df
+
+        last_idx = safe_df.index[-1]
+        current_open = safe_df.at[last_idx, 'open']
+        for column in ('high', 'low', 'close'):
+            if column in safe_df.columns:
+                safe_df.at[last_idx, column] = current_open
+        if 'volume' in safe_df.columns:
+            safe_df.at[last_idx, 'volume'] = 0
+
+        ha_columns = {'HA_Open', 'HA_High', 'HA_Low', 'HA_Close'}
+        if ha_columns.issubset(safe_df.columns):
+            current_ha_open = safe_df.at[last_idx, 'HA_Open']
+            safe_df.at[last_idx, 'HA_High'] = current_ha_open
+            safe_df.at[last_idx, 'HA_Low'] = current_ha_open
+            safe_df.at[last_idx, 'HA_Close'] = current_ha_open
+
+        return safe_df
+
     def warmup_strategies(self):
         # 🚨 FIX: اگر وارم‌آپ در تنظیمات خاموش بود، کلاً رد شو!
         if not self.config.get('warmup_enabled', True):
@@ -364,9 +389,11 @@ class LiveSignalEngine:
                 
                 trade_type, ep, sl, tp = None, None, None, None
                 if hasattr(strat, 'check_entry_signal'):
-                    res = ErrorManager.safe_execute(strat_id, 'check_entry_signal', strat.check_entry_signal, history_slice)
-                    if res and isinstance(res, tuple) and len(res) == 4:
-                        trade_type, ep, sl, tp = res
+                    safe_history_slice = self._mask_current_candle(history_slice)
+                    res = ErrorManager.safe_execute(
+                        strat_id, 'check_entry_signal', strat.check_entry_signal, safe_history_slice
+                    )
+                    trade_type, ep, sl, tp = StrategyValidator.normalize_entry_signal(res)
                 
                 if trade_type:
                     virtual_real_position = {'type': trade_type, 'entry_price': ep, 'sl': sl, 'tp': tp, 'entry_time': current_candle.name}
@@ -504,9 +531,9 @@ class LiveSignalEngine:
 
         trade_type, entry_anchor, sl_anchor, tp_anchor = None, None, None, None
         if hasattr(strat, 'check_entry_signal'):
-            res = ErrorManager.safe_execute(strat_id, 'check_entry_signal', strat.check_entry_signal, df)
-            if res and isinstance(res, tuple) and len(res) == 4:
-                trade_type, entry_anchor, sl_anchor, tp_anchor = res
+            safe_df = self._mask_current_candle(df)
+            res = ErrorManager.safe_execute(strat_id, 'check_entry_signal', strat.check_entry_signal, safe_df)
+            trade_type, entry_anchor, sl_anchor, tp_anchor = StrategyValidator.normalize_entry_signal(res)
 
         if trade_type:
             allowed_days = s_config.get('allowed_days', [0, 1, 2, 3, 4, 5, 6])

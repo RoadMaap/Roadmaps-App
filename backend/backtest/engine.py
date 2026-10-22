@@ -47,8 +47,10 @@ if project_root not in sys.path:
 # ==============================================================================
 try:
     from trading.margin_calculator import MarginManager
+    from core.error_handler import StrategyValidator
 except ImportError:
     from backend.trading.margin_calculator import MarginManager
+    from backend.core.error_handler import StrategyValidator
 
 class LookaheadBiasError(Exception):
     pass
@@ -219,7 +221,8 @@ class SignalEngine:
             asset_slice = pure_df.iloc[ptr - strat_lookback : ptr + 1]
             
             safe_slice = self.security.get_safe_history_slice(asset_slice)
-            trade_type, entry, sl, tp = asset_config['strategy'].check_entry_signal(safe_slice)
+            signal = asset_config['strategy'].check_entry_signal(safe_slice)
+            trade_type, entry, sl, tp = StrategyValidator.normalize_entry_signal(signal)
             
             if trade_type:
                 self.security.audit_signal_integrity(strategy_id, entry, asset_slice.iloc[-1])
@@ -646,6 +649,7 @@ class Multi_Backtester:
             self.lookback = config.get('lookback_period', 200)
             self.progress_callback = config.get('progress_callback')
             self.status_callback = config.get('status_callback')
+            self.cancel_event = config.get('cancel_event')
 
             self.validator.validate()
 
@@ -743,6 +747,8 @@ class Multi_Backtester:
         pure_df.loc[exit_time, "exit_price_marker"] = exit_price
 
     def run(self):
+        if self.cancel_event is not None and self.cancel_event.is_set():
+            return
         # 1. Load and merge time series data
         self.historical_data = self.loader.load_and_merge()
         if self.status_callback:
@@ -754,6 +760,8 @@ class Multi_Backtester:
         
         # 2. Independent and 100% isolated indicator calculation (complete single-engine simulation)
         for asset in self.config['assets']:
+            if self.cancel_event is not None and self.cancel_event.is_set():
+                break
             sym = asset['symbol']
             strat_id = asset['strategy_id']
             strategy = asset['strategy']
@@ -781,11 +789,16 @@ class Multi_Backtester:
                 
                 # Sequential calculation matching TradingView's core logic
                 for i in range(1, len(pure_df)):
+                    if self.cancel_event is not None and self.cancel_event.is_set():
+                        break
                     ha_open[i] = (ha_open[i-1] + ha_close_vals[i-1]) / 2.0
                     
                 pure_df['HA_Open'] = ha_open
                 pure_df['HA_High'] = pure_df[['high', 'HA_Open', 'HA_Close']].max(axis=1)
                 pure_df['HA_Low'] = pure_df[['low', 'HA_Open', 'HA_Close']].min(axis=1)
+
+            if self.cancel_event is not None and self.cancel_event.is_set():
+                break
             
             # Calculate indicators before removing incomplete essential rows.
             prepared = strategy.prepare_indicators(pure_df, asset.get('candle_type', 'STANDARD'))
@@ -814,16 +827,23 @@ class Multi_Backtester:
         
         total_candles = max(1, len(self.historical_data.index))
         for candle_index, current_time_dt in enumerate(self.historical_data.index):
+            if self.cancel_event is not None and self.cancel_event.is_set():
+                break
             for strat_id, pure_df in self.pure_data.items():
                 ptr = self.pointers[strat_id]
                 while ptr < len(pure_df) and pure_df.index[ptr] < current_time_dt:
+                    if self.cancel_event is not None and self.cancel_event.is_set():
+                        break
                     ptr += 1
                 self.pointers[strat_id] = ptr
+            if self.cancel_event is not None and self.cancel_event.is_set():
+                break
             
             self.signal_engine.process_all_assets(current_time_dt)
             self.position_engine.manage_all_positions(current_time_dt)
             if self.progress_callback:
-                self.progress_callback((candle_index + 1) / total_candles * 100.0, 'Running V3.9 simulation')
+                percent = min((candle_index + 1) / total_candles * 100.0, 99.0)
+                self.progress_callback(percent, 'Running V3.9 simulation')
             
         print("🏁 Loop finished.")
 

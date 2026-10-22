@@ -4,7 +4,7 @@ import threading
 import time
 from datetime import datetime
 
-from .data_fetcher import ensure_backtest_data_dir, fetch_symbol_history
+from .data_fetcher import BacktestCancelled, ensure_backtest_data_dir, fetch_symbol_history
 from .engine import Multi_Backtester
 from .reporter import BacktestReporter
 
@@ -25,6 +25,7 @@ class BacktestController:
             if self.is_running:
                 return {'success': False, 'message': 'A backtest is already running.'}
             self._event.clear()
+            self._latest_result = None
             self._thread = threading.Thread(
                 target=self._run_backtest,
                 args=(config, progress_callback, status_callback, result_callback),
@@ -62,7 +63,10 @@ class BacktestController:
                     lookback_period=asset.get('lookback_period', config.get('lookback_period', 500)),
                     progress_callback=report_drilling_progress,
                     mt5_path=config.get('mt5_path', ''),
+                    cancel_event=self._event,
                 )
+                if self._event.is_set():
+                    raise BacktestCancelled('Backtest cancelled.')
                 data_file = ensure_backtest_data_dir() / f"{asset['symbol'].upper()}_{asset['timeframe'].upper()}.csv"
                 if not data_file.is_file():
                     raise RuntimeError(f'Backtest history file was not created for strategy {strategy_id}.')
@@ -79,6 +83,8 @@ class BacktestController:
                 'status_callback': status_callback,
             })
             engine.run()
+            if self._event.is_set():
+                raise BacktestCancelled('Backtest cancelled.')
             self._latest_result = BacktestReporter(engine).build_report()
             candles_processed = sum(len(frame) for frame in engine.pure_data.values())
             if progress_callback:
@@ -91,6 +97,10 @@ class BacktestController:
                     f"{len(self._latest_result.get('trades', []))} trades executed | "
                     f"Net Profit: ${float(summary.get('net_profit', 0.0)):.2f}",
                 )
+        except BacktestCancelled:
+            self._latest_result = {'cancelled': True}
+            if status_callback:
+                status_callback('warning', 'Backtest cancelled.')
         except Exception as exc:  # pragma: no cover - runtime safety
             self._latest_result = {'error': str(exc), 'summary': {'final_equity': 0.0}}
             if status_callback:
